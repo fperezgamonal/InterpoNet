@@ -71,14 +71,18 @@ with tf.device('/gpu:0'):
 
         print("Performing inference...")
         prediction = sess.run(forward_model,
-                              feed_dict={image_ph: np.expand_dims(img,axis=0),
-                                         mask_ph: np.reshape(mask,[1,mask.shape[0],mask.shape[1],1]),
-                                         edges_ph: np.expand_dims(np.expand_dims(edges,axis=0),axis=3),
+                              feed_dict={image_ph: np.expand_dims(img, axis=0),
+                                         mask_ph: np.reshape(mask, [1, mask.shape[0], mask.shape[1], 1]),
+                                         edges_ph: np.expand_dims(np.expand_dims(edges, axis=0), axis=3),
                                        })
         print("Upscaling...")
-        upscaled_pred = sk.transform.resize(prediction[0],[args.img_height,args.img_width, 2], preserve_range=True, order=3)
+        upscaled_pred = sk.transform.resize(prediction[0], [args.img_height, args.img_width, 2], preserve_range=True,
+                                            order=3)
 
-        io_utils.save_flow_file(upscaled_pred, filename='out_no_var.flo')
+        # io_utils.save_flow_file(upscaled_pred, filename='out_no_var.flo')
+        # save_flow_file uses deprecated code
+        io_utils.write_flow(upscaled_pred, filename='out_no_var.flo')
 
         print("Variational post Processing...")
-        utils.calc_variational_inference_map(args.img1_filename, args.img2_filename, 'out_no_var.flo', args.out_filename, 'sintel')
+        utils.calc_variational_inference_map(args.img1_filename, args.img2_filename, 'out_no_var.flo',
+                                             args.out_filename, 'sintel')
