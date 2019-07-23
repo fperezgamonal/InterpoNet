@@ -36,14 +36,14 @@ if args.sintel:
         args.model_filename = 'models/ff_sintel.ckpt'
 
 # Load edges file
-print "Loading files..."
+print("Loading files...")
 edges = io_utils.load_edges_file(args.edges_filename, width=args.img_width, height=args.img_height)
 
 # Load matching file
 img, mask = io_utils.load_matching_file(args.matches_filename, width=args.img_width, height=args.img_height)
 
 # downscale
-print "Downscaling..."
+print("Downscaling...")
 img, mask, edges = utils.downscale_all(img, mask, edges, args.downscale)
 
 if args.ba_matches_filename is not None:
@@ -69,16 +69,16 @@ with tf.device('/gpu:0'):
 
         saver_keep.restore(sess, args.model_filename)
 
-        print "Performing inference..."
+        print("Performing inference...")
         prediction = sess.run(forward_model,
                               feed_dict={image_ph: np.expand_dims(img,axis=0),
                                          mask_ph: np.reshape(mask,[1,mask.shape[0],mask.shape[1],1]),
                                          edges_ph: np.expand_dims(np.expand_dims(edges,axis=0),axis=3),
                                        })
-        print "Upscaling..."
+        print("Upscaling...")
         upscaled_pred = sk.transform.resize(prediction[0],[args.img_height,args.img_width, 2], preserve_range=True, order=3)
 
         io_utils.save_flow_file(upscaled_pred, filename='out_no_var.flo')
 
-        print "Variational post Processing..."
+        print("Variational post Processing...")
         utils.calc_variational_inference_map(args.img1_filename, args.img2_filename, 'out_no_var.flo', args.out_filename, 'sintel')
