@@ -6,6 +6,7 @@ import io_utils
 import model
 import argparse
 import os
+import datetime
 
 
 def test_one_image(args):
@@ -94,6 +95,22 @@ def test_batch(args):
                 not_disp_S0_10_count = 0
                 not_disp_S10_40_count = 0
                 not_disp_S40plus_count = 0
+            if args.log_metrics2file:
+                basefile = os.path.basename(args.img1_filename)
+                logfile = basefile.replace('.txt', '_metrics.log')
+                logfile_full = os.path.join(args.out_filename, logfile) if args.new_par_folder is None else \
+                    os.path.join(args.out_filename, args.new_par_folder, logfile)
+                if not os.path.isdir(os.path.dirname(logfile_full)):
+                    os.makedirs(os.path.dirname(logfile_full))
+                # Open file (once)
+                logfile = open(logfile_full, 'w')
+                if args.new_par_folder is not None:
+                    now = datetime.datetime.now()
+                    date_now = now.strftime('%d-%m-%y_%H-%M-%S')
+                    # Record header for the file detailing 'experiment' string (new_par_folder)
+                    header_str = "Today is {}\nOpening and logging experiment '{}'\n Written to file: '{}'\n".format(
+                        date_now, args.new_par_folder, logfile_full)
+                    logfile.write(header_str)
 
             for img_idx in range(len(path_list)):
                 # Read + pre-process files
@@ -109,10 +126,6 @@ def test_batch(args):
                 edges_fname = path_inputs[2]
                 matches_fname = path_inputs[3]
                 edges = io_utils.load_edges_file(edges_fname, width=width, height=height)
-
-                # Define output path based on the img1_fname
-                unique_name = img1_fname.split('/')[-1][:-4]
-                out_path_full = os.path.join(args.out_filename, unique_name, '_flow.flo')
 
                 # Load matching file
                 img, mask = io_utils.load_matching_file(matches_fname, width=width, height=height)
@@ -149,16 +162,32 @@ def test_batch(args):
                         # save_flow_file uses deprecated code
                         io_utils.write_flow(upscaled_pred, filename='out_no_var.flo')
 
+                        parent_folder_name = path_inputs[0].split('/')[-2] if args.new_par_folder is None \
+                            else args.new_par_folder
+                        unique_name = path_inputs[0].split('/')[-1][:-4]
+                        out_path_complete = os.path.join(args.out_filename, parent_folder_name)
+                        if not os.path.isdir(out_path_complete):
+                            os.makedirs(out_path_complete)
+
+                        out_flo_path = os.path.join(out_path_complete, unique_name, '_flow.flo')
+
                         # Variational post Processing
-                        utils.calc_variational_inference_map(img1_fname, img2_fname, 'out_no_var.flo',
-                                                             out_path_full, 'sintel')
+                        utils.calc_variational_inference_map(img1_fname, img2_fname, 'out_no_var.flo', out_flo_path,
+                                                             'sintel')
 
                         # Read outputted flow to compute metrics
                         pred_flow = io_utils.read_flow(out_path_full)
-                        if args.compute_metrics and args.gt_flow_0 is not None:
+                        # Save image visualization of predicted flow (Middlebury colour coding)
+                        if args.save_image:
+                            flow_img = utils.flow_to_image(pred_flow)
+                            out_path_full = os.path.join(out_path_complete, unique_name + '_viz.png')
+                            sk.io.imsave(out_path_full, flow_img)
+
+                        if args.compute_metrics and args.gt_flow is not None:
                             # Compute all metrics
                             metrics, not_occluded, not_disp_s010, not_disp_s1040, not_disp_s40plus = \
-                                utils.compute_all_metrics(pred_flow, gt_flow, occ_mask=occ_mask, inv_mask=inv_mask)
+                                utils.compute_all_metrics(pred_flow, args.gt_flow, occ_mask=args.occ_mask,
+                                                          inv_mask=args.inv_mask)
                             final_str_formated = utils.get_metrics(metrics, flow_fname=unique_name)
                             if args.accumulate_metrics:
                                 not_occluded_count += not_occluded
@@ -192,7 +221,8 @@ if __name__ == '__main__':
     parser.add_argument('--edges_filename', type=str, help='Edges filename', default='example/frame_0001.dat')
     parser.add_argument('--matches_filename', type=str, help='Sparse matches filename',
                         default='example/frame_0001.txt')
-    parser.add_argument('--out_filename', type=str, help='Flow output file filename', default='example/frame_0001.flo')
+    parser.add_argument('--out_filename', type=str, help='Flow output filename (or path if .txt file is passed)',
+                        default='example/')
 
     parser.add_argument('--model_filename', type=str, help='Saved model parameters filename')
     parser.add_argument('--ba_matches_filename', type=str,
@@ -212,7 +242,21 @@ if __name__ == '__main__':
                              ' Nan) or not)', default=True)
     parser.add_argument('--log_metrics2file', type=io_utils.str2bool, required=False,
                         help='whether to log the metrics to a file instead of printing them to stdout', default=False,)
-
+    parser.add_argument('--new_par_folder', type=str, required=False,
+                        help='for batch inference, instead of creating a subfolder with the first file parent name,'
+                             ' we assign a custom', default=None)
+    parser.add_argument('--save_image', type=bool, required=False, help='whether to save an colour-coded image of the'
+                                                                        ' predicted flow or not', default=True,)
+    parser.add_argument('--gt_flow', type=str, required=False,
+                        help='Path to ground truth flow so we can compute error metrics',
+                        default='data/samples/sintel/frame_00186.flo',)
+    parser.add_argument('--occ_mask', type=str, required=False,
+                        help='Path to occlusions mask (1s indicate pixel is occluded, 0 otherwise)',
+                        default='data/samples/sintel/frame_00186_occ_mask.png',)
+    parser.add_argument('--inv_mask', type=str, required=False,
+                        help='Path to invalid mask with pixels that should not be considered when computing metrics = '
+                             '1(invalid flow)',
+                        default='data/samples/sintel/frame_00186_inv_mask.png',)
     arguments = parser.parse_args()
 
     if arguments.sintel:

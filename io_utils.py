@@ -3,6 +3,8 @@ import os
 import struct
 import argparse
 
+DEBUG = False
+
 
 def str2bool(v):
     if isinstance(v, bool):
@@ -61,6 +63,7 @@ def load_flow_file(filename):
         data2D = np.resize(data, (height, width, 2))
 
         return data2D
+
 
 def read_flow(filename):
     """

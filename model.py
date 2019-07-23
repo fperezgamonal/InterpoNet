@@ -10,7 +10,7 @@ def conv_layer(conv_input, name, shape, reuse=None, activation=tf.nn.elu):
         return activation(bias, name=scope.name)
 
 
-def getNetwork(input_img, mask, edges, reuse=None):
+def getNetwork(input_img, mask, edges, reuse=tf.AUTO_REUSE):
     images = tf.concat([input_img, mask, edges], axis=3)
 
     conv1 = conv_layer(conv_input=images, name='conv1', shape=[7, 7, 4, 32])
