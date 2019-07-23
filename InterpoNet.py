@@ -5,84 +5,97 @@ import utils
 import io_utils
 import model
 import argparse
-
-# Parsing the parameters
-parser = argparse.ArgumentParser(description='Interponet inference')
-parser.add_argument('img1_filename', type=str, help='First image filename in the image pair')
-parser.add_argument('img2_filename', type=str, help='Second image filename in the image pair')
-parser.add_argument('edges_filename', type=str, help='Edges filename')
-parser.add_argument('matches_filename', type=str, help='Sparse matches filename')
-parser.add_argument('out_filename', type=str, help='Flow output file filename')
-
-parser.add_argument('--model_filename', type=str, help='Saved model parameters filename')
-parser.add_argument('--ba_matches_filename', type=str, help='Sparse matches filename from Second image to first image')
-
-parser.add_argument('--img_width', type=int, help='Saved model parameters filename')
-parser.add_argument('--img_height', type=int, help='Saved model parameters filename')
-parser.add_argument('--downscale', type=int, help='Saved model parameters filename')
-
-parser.add_argument('--sintel', action='store_true', help='Use default parameters for sintel')
-
-args = parser.parse_args()
-
-if args.sintel:
-    if args.img_width is None:
-        args.img_width = 1024
-    if args.img_height is None:
-        args.img_height = 436
-    if args.downscale is None:
-        args.downscale = 8
-    if args.model_filename is None:
-        args.model_filename = 'models/ff_sintel.ckpt'
-
-# Load edges file
-print("Loading files...")
-edges = io_utils.load_edges_file(args.edges_filename, width=args.img_width, height=args.img_height)
-
-# Load matching file
-img, mask = io_utils.load_matching_file(args.matches_filename, width=args.img_width, height=args.img_height)
-
-# downscale
-print("Downscaling...")
-img, mask, edges = utils.downscale_all(img, mask, edges, args.downscale)
-
-if args.ba_matches_filename is not None:
-    img_ba, mask_ba = io_utils.load_matching_file(args.ba_matches_filename, width=args.img_width, height=args.img_height)
-
-    # downscale ba
-    img_ba, mask_ba, _ = utils.downscale_all(img_ba, mask_ba, None, args.downscale)
-    img, mask =  utils.create_mean_map_ab_ba(img, mask, img_ba, mask_ba, args.downscale)
+import os
 
 
-with tf.device('/gpu:0'):
-    with tf.Graph().as_default():
+def test_one_image(args):
+    # Load edges file
+    print("Loading files...")
+    edges = io_utils.load_edges_file(args.edges_filename, width=args.img_width, height=args.img_height)
 
-        image_ph = tf.placeholder(tf.float32, shape=(None, img.shape[0], img.shape[1], 2), name='image_ph')
-        mask_ph = tf.placeholder(tf.float32, shape=(None, img.shape[0], img.shape[1], 1), name='mask_ph')
-        edges_ph = tf.placeholder(tf.float32, shape=(None, img.shape[0], img.shape[1], 1), name='edges_ph')
+    # Load matching file
+    img, mask = io_utils.load_matching_file(args.matches_filename, width=args.img_width, height=args.img_height)
 
-        forward_model = model.getNetwork(image_ph, mask_ph, edges_ph, reuse=False)
+    # downscale
+    print("Downscaling...")
+    img, mask, edges = utils.downscale_all(img, mask, edges, args.downscale)
 
-        saver_keep = tf.train.Saver(tf.all_variables(), max_to_keep=0)
+    if args.ba_matches_filename is not None:
+        img_ba, mask_ba = io_utils.load_matching_file(args.ba_matches_filename, width=args.img_width,
+                                                      height=args.img_height)
 
-        sess = tf.Session()
+        # downscale ba
+        img_ba, mask_ba, _ = utils.downscale_all(img_ba, mask_ba, None, args.downscale)
+        img, mask = utils.create_mean_map_ab_ba(img, mask, img_ba, mask_ba, args.downscale)
 
-        saver_keep.restore(sess, args.model_filename)
+    with tf.device('/gpu:0'):
+        with tf.Graph().as_default():
 
-        print("Performing inference...")
-        prediction = sess.run(forward_model,
-                              feed_dict={image_ph: np.expand_dims(img, axis=0),
-                                         mask_ph: np.reshape(mask, [1, mask.shape[0], mask.shape[1], 1]),
-                                         edges_ph: np.expand_dims(np.expand_dims(edges, axis=0), axis=3),
-                                       })
-        print("Upscaling...")
-        upscaled_pred = sk.transform.resize(prediction[0], [args.img_height, args.img_width, 2], preserve_range=True,
-                                            order=3)
+            image_ph = tf.placeholder(tf.float32, shape=(None, img.shape[0], img.shape[1], 2), name='image_ph')
+            mask_ph = tf.placeholder(tf.float32, shape=(None, img.shape[0], img.shape[1], 1), name='mask_ph')
+            edges_ph = tf.placeholder(tf.float32, shape=(None, img.shape[0], img.shape[1], 1), name='edges_ph')
 
-        # io_utils.save_flow_file(upscaled_pred, filename='out_no_var.flo')
-        # save_flow_file uses deprecated code
-        io_utils.write_flow(upscaled_pred, filename='out_no_var.flo')
+            forward_model = model.getNetwork(image_ph, mask_ph, edges_ph, reuse=False)
 
-        print("Variational post Processing...")
-        utils.calc_variational_inference_map(args.img1_filename, args.img2_filename, 'out_no_var.flo',
-                                             args.out_filename, 'sintel')
+            saver_keep = tf.train.Saver(tf.all_variables(), max_to_keep=0)
+
+            sess = tf.Session()
+
+            saver_keep.restore(sess, args.model_filename)
+
+            print("Performing inference...")
+            prediction = sess.run(forward_model,
+                                  feed_dict={image_ph: np.expand_dims(img, axis=0),
+                                             mask_ph: np.reshape(mask, [1, mask.shape[0], mask.shape[1], 1]),
+                                             edges_ph: np.expand_dims(np.expand_dims(edges, axis=0), axis=3),
+                                             })
+            print("Upscaling...")
+            upscaled_pred = sk.transform.resize(prediction[0], [args.img_height, args.img_width, 2],
+                                                preserve_range=True, order=3)
+
+            # io_utils.save_flow_file(upscaled_pred, filename='out_no_var.flo')
+            # save_flow_file uses deprecated code
+            io_utils.write_flow(upscaled_pred, filename='out_no_var.flo')
+
+            print("Variational post Processing...")
+            utils.calc_variational_inference_map(args.img1_filename, args.img2_filename, 'out_no_var.flo',
+                                                 args.out_filename, 'sintel')
+
+
+if __name__ == '__main__':
+    # Parsing the parameters
+    parser = argparse.ArgumentParser(description='Interponet inference (image or filelist)')
+    parser.add_argument('--img1_filename', type=str, help='First image filename in the image pair',
+                        default='example/frame_0001.png')
+    parser.add_argument('--img2_filename', type=str, help='Second image filename in the image pair',
+                        default='example/frame_0002.png')
+    parser.add_argument('--edges_filename', type=str, help='Edges filename', default='example/frame_0001.dat')
+    parser.add_argument('--matches_filename', type=str, help='Sparse matches filename',
+                        default='example/frame_0001.txt')
+    parser.add_argument('--out_filename', type=str, help='Flow output file filename', default='example/frame_0001.flo')
+
+    parser.add_argument('--model_filename', type=str, help='Saved model parameters filename')
+    parser.add_argument('--ba_matches_filename', type=str,
+                        help='Sparse matches filename from Second image to first image')
+
+    parser.add_argument('--img_width', type=int, help='Saved model parameters filename')
+    parser.add_argument('--img_height', type=int, help='Saved model parameters filename')
+    parser.add_argument('--downscale', type=int, help='Saved model parameters filename')
+
+    parser.add_argument('--sintel', action='store_true', help='Use default parameters for sintel')
+
+    args = parser.parse_args()
+
+    if args.sintel:
+        if args.img_width is None:
+            args.img_width = 1024
+        if args.img_height is None:
+            args.img_height = 436
+        if args.downscale is None:
+            args.downscale = 8
+        if args.model_filename is None:
+            args.model_filename = 'models/ff_sintel.ckpt'
+    if os.path.basename(args.img1_filename).lower()[-3:] == 'txt':
+        print("test batch")
+    else:
+        test_one_image(args)
