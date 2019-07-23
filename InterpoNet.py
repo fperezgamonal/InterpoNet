@@ -62,10 +62,130 @@ def test_one_image(args):
                                                  args.out_filename, 'sintel')
 
 
+def test_batch(args):
+    # Read first line to get image width and height from first image (assuming all have the same dimensions)
+    with open(args.img1_filename, 'r') as input_file:
+        first_line = input_file.readline()
+    tmp_filename = first_line.split()[0]
+    tmp_image = sk.io.imread(tmp_filename)
+    height, width, _ = tmp_image.shape
+
+    # Allocate network w. placeholders (once)
+    image_ph = tf.placeholder(tf.float32, shape=(None, height, width, 2), name='image_ph')
+    mask_ph = tf.placeholder(tf.float32, shape=(None, height, width, 1), name='mask_ph')
+    edges_ph = tf.placeholder(tf.float32, shape=(None, height, width, 1), name='edges_ph')
+
+    forward_model = model.getNetwork(image_ph, mask_ph, edges_ph, reuse=False)
+
+    saver_keep = tf.train.Saver(tf.all_variables(), max_to_keep=0)
+
+    with tf.Session() as sess:
+        saver_keep.restore(sess, args.model_filename)
+
+        # Read and process the resulting list, one element at a time
+        with open(args.img1_filename, 'r') as input_file:
+            path_list = input_file.readlines()
+
+            if args.compute_metrics and args.accumulate_metrics:
+                # Initialise some auxiliar variables to track metrics
+                add_metrics = np.array([])
+                # Auxiliar counters for metrics
+                not_occluded_count = 0
+                not_disp_S0_10_count = 0
+                not_disp_S10_40_count = 0
+                not_disp_S40plus_count = 0
+
+            for img_idx in range(len(path_list)):
+                # Read + pre-process files
+                # Each line is split into a list with N elements (separator: blank space (" "))
+                path_inputs = path_list[img_idx][:-1].split(' ')  # remove \n at the end of the line!
+                assert 4 <= len(path_inputs) <= 6, (
+                    'More paths than expected. Expected: I1+I2+edges+matches(4), I1+I2+edges+matches+gtflow(5),'
+                    ' I1+I2+edges+matches+backward_matches(5) or I1+I2+edges+matches+backward_matches+gtflow(6)')
+                # Common operations to all input sizes
+                # Read input frames (for variational)
+                img1_fname = path_inputs[0]
+                img2_fname = path_inputs[1]
+                edges_fname = path_inputs[2]
+                matches_fname = path_inputs[3]
+                edges = io_utils.load_edges_file(edges_fname, width=width, height=height)
+
+                # Define output path based on the img1_fname
+                unique_name = img1_fname.split('/')[-1][:-4]
+                out_path_full = os.path.join(args.out_filename, unique_name, '_flow.flo')
+
+                # Load matching file
+                img, mask = io_utils.load_matching_file(matches_fname, width=width, height=height)
+
+                # downscale
+                img, mask, edges = utils.downscale_all(img, mask, edges, args.downscale)
+                if len(path_inputs) == 4 is not None or len(path_inputs) == 6:
+                    print("")
+                elif len(path_inputs) == 5 and args.ba_matches_filename is not None or len(path_inputs) == 6:
+                    ba_matches_filename = path_inputs[4]
+                    img_ba, mask_ba = io_utils.load_matching_file(ba_matches_filename, width=args.img_width,
+                                                                  height=args.img_height)
+
+                    # downscale ba
+                    img_ba, mask_ba, _ = utils.downscale_all(img_ba, mask_ba, None, args.downscale)
+                    img, mask = utils.create_mean_map_ab_ba(img, mask, img_ba, mask_ba, args.downscale)
+                else:
+                    print("Warning: expected 5th input to be file for backward matches, continuing without it...")
+
+                # Compute OF and run variational post-processing
+                with tf.device('/gpu:0'):
+                    with tf.Graph().as_default():
+                        prediction = sess.run(forward_model, feed_dict={image_ph: np.expand_dims(img, axis=0),
+                                                                        mask_ph: np.reshape(mask, [1, mask.shape[0],
+                                                                                                   mask.shape[1], 1]),
+                                                                        edges_ph: np.expand_dims(
+                                                                            np.expand_dims(edges, axis=0), axis=3),
+                                                                        })
+                        # Upscale prediction
+                        upscaled_pred = sk.transform.resize(prediction[0], [args.img_height, args.img_width, 2],
+                                                            preserve_range=True, order=3)
+
+                        # io_utils.save_flow_file(upscaled_pred, filename='out_no_var.flo')
+                        # save_flow_file uses deprecated code
+                        io_utils.write_flow(upscaled_pred, filename='out_no_var.flo')
+
+                        # Variational post Processing
+                        utils.calc_variational_inference_map(img1_fname, img2_fname, 'out_no_var.flo',
+                                                             out_path_full, 'sintel')
+
+                        # Read outputted flow to compute metrics
+                        pred_flow = io_utils.read_flow(out_path_full)
+                        if args.compute_metrics and args.gt_flow_0 is not None:
+                            # Compute all metrics
+                            metrics, not_occluded, not_disp_s010, not_disp_s1040, not_disp_s40plus = \
+                                utils.compute_all_metrics(pred_flow, gt_flow, occ_mask=occ_mask, inv_mask=inv_mask)
+                            final_str_formated = utils.get_metrics(metrics, flow_fname=unique_name)
+                            if args.accumulate_metrics:
+                                not_occluded_count += not_occluded
+                                not_disp_S0_10_count += not_disp_s010
+                                not_disp_S10_40_count += not_disp_s1040
+                                not_disp_S40plus_count += not_disp_s40plus
+                                # Update metrics array
+                                current_metrics = np.hstack(
+                                    (metrics['mangall'], metrics['stdangall'], metrics['EPEall'],
+                                     metrics['mangmat'], metrics['stdangmat'], metrics['EPEmat'],
+                                     metrics['mangumat'], metrics['stdangumat'], metrics['EPEumat'],
+                                     metrics['S0-10'], metrics['S10-40'], metrics['S40plus']))
+                                # Concatenate in one new row (if empty just initialises to current_metrics)
+                                add_metrics = np.vstack(
+                                    [add_metrics, current_metrics]) if add_metrics.size else current_metrics
+
+                            if args.log_metrics2file:
+                                logfile.write(final_str_formated)
+                            else:  # print to stdout
+                                print(final_str_formated)
+
+
 if __name__ == '__main__':
     # Parsing the parameters
     parser = argparse.ArgumentParser(description='Interponet inference (image or filelist)')
-    parser.add_argument('--img1_filename', type=str, help='First image filename in the image pair',
+    parser.add_argument('--img1_filename', type=str, help='First image filename in the image pair (or path to txt file'
+                                                          ' with all the paths',
                         default='example/frame_0001.png')
     parser.add_argument('--img2_filename', type=str, help='Second image filename in the image pair',
                         default='example/frame_0002.png')
@@ -84,18 +204,30 @@ if __name__ == '__main__':
 
     parser.add_argument('--sintel', action='store_true', help='Use default parameters for sintel')
 
-    args = parser.parse_args()
+    parser.add_argument('--compute_metrics', type=io_utils.str2bool, required=False,
+                        help='whether to compute error metrics or not (if True all available metrics are computed,'
+                             ' check utils.py)', default=True)
+    parser.add_argument('--accumulate_metrics', type=io_utils.str2bool, required=False,
+                        help='for batch: whether to accumulate metrics to compute averages (excluding outliers: Inf,'
+                             ' Nan) or not)', default=True)
+    parser.add_argument('--log_metrics2file', type=io_utils.str2bool, required=False,
+                        help='whether to log the metrics to a file instead of printing them to stdout', default=False,)
 
-    if args.sintel:
-        if args.img_width is None:
-            args.img_width = 1024
-        if args.img_height is None:
-            args.img_height = 436
-        if args.downscale is None:
-            args.downscale = 8
-        if args.model_filename is None:
-            args.model_filename = 'models/ff_sintel.ckpt'
-    if os.path.basename(args.img1_filename).lower()[-3:] == 'txt':
-        print("test batch")
+    arguments = parser.parse_args()
+
+    if arguments.sintel:
+        if arguments.img_width is None:
+            arguments.img_width = 1024
+        if arguments.img_height is None:
+            arguments.img_height = 436
+        if arguments.downscale is None:
+            arguments.downscale = 8
+        if arguments.model_filename is None:
+            arguments.model_filename = 'models/ff_sintel.ckpt'
+
+    if os.path.basename(arguments.img1_filename).lower()[-3:] == 'txt':
+        print("Testing all images from user-provided text file: '{}'".format(arguments.img1_filename))
+        test_batch(arguments)
     else:
-        test_one_image(args)
+        print("Testing one single image with name: '{}'".format(arguments.img1_filename))
+        test_one_image(arguments)

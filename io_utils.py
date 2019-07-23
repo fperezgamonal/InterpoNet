@@ -1,6 +1,18 @@
 import numpy as np
 import os
 import struct
+import argparse
+
+
+def str2bool(v):
+    if isinstance(v, bool):
+       return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
 def load_flow_file(filename):
@@ -49,6 +61,25 @@ def load_flow_file(filename):
         data2D = np.resize(data, (height, width, 2))
 
         return data2D
+
+def read_flow(filename):
+    """
+    read optical flow from Middlebury .flo file
+    :param filename: name of the flow file
+    :return: optical flow data in matrix
+    """
+    with open(filename, 'rb') as f:
+        magic = np.fromfile(f, np.float32, count=1)
+        if 202021.25 != magic:
+            print('Magic number incorrect. Invalid .flo file')
+        else:
+            w = np.fromfile(f, np.int32, count=1)[0]
+            h = np.fromfile(f, np.int32, count=1)[0]
+            if DEBUG:
+                print("Reading {0} x {1} flo file".format(w, h))
+            data = np.fromfile(f, np.float32, count=2*w*h)
+            # Reshape data into 3D array (columns, rows, bands)
+            return np.resize(data, (h, w, 2))
 
 
 def save_flow_file(flow, filename):
