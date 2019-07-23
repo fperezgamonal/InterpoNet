@@ -1,4 +1,6 @@
 import tensorflow as tf
+
+
 def conv_layer(conv_input, name, shape, reuse=None, activation=tf.nn.elu):
     with tf.variable_scope(name, reuse=reuse) as scope:
         kernel = tf.get_variable('weights', shape=shape, initializer=tf.contrib.layers.xavier_initializer_conv2d())
@@ -7,8 +9,9 @@ def conv_layer(conv_input, name, shape, reuse=None, activation=tf.nn.elu):
         bias = tf.nn.bias_add(conv, biases)
         return activation(bias, name=scope.name)
 
+
 def getNetwork(input_img, mask, edges, reuse=None):
-    images = tf.concat(3, (input_img, mask, edges))
+    images = tf.concat([input_img, mask, edges], axis=3)
 
     conv1 = conv_layer(conv_input=images, name='conv1', shape=[7, 7, 4, 32])
     conv2 = conv_layer(conv_input=conv1, name='conv2', shape=[7, 7, 32, 64])
