@@ -132,18 +132,122 @@ def test_batch(args):
 
                 # downscale
                 img, mask, edges = utils.downscale_all(img, mask, edges, args.downscale)
-                if len(path_inputs) == 4 is not None or len(path_inputs) == 6:
-                    print("")
-                elif len(path_inputs) == 5 and args.ba_matches_filename is not None or len(path_inputs) == 6:
-                    ba_matches_filename = path_inputs[4]
-                    img_ba, mask_ba = io_utils.load_matching_file(ba_matches_filename, width=args.img_width,
-                                                                  height=args.img_height)
+                # I1 + I2 + edges + matches
+                if len(path_inputs) == 4:
+                    print("Input type is: I1+I2+edges+matches, so no error metrics can be computed")
+                    args.compute_metrics = False
+                elif len(path_inputs) == 5:
+                    # I1+I2+edges+matches+ba_matches
+                    if args.ba_matches_filename is not None:
+                        ba_matches_filename = path_inputs[4]
+                        img_ba, mask_ba = io_utils.load_matching_file(ba_matches_filename, width=args.img_width,
+                                                                      height=args.img_height)
+                        # downscale ba
+                        img_ba, mask_ba, _ = utils.downscale_all(img_ba, mask_ba, None, args.downscale)
+                        img, mask = utils.create_mean_map_ab_ba(img, mask, img_ba, mask_ba, args.downscale)
 
-                    # downscale ba
-                    img_ba, mask_ba, _ = utils.downscale_all(img_ba, mask_ba, None, args.downscale)
-                    img, mask = utils.create_mean_map_ab_ba(img, mask, img_ba, mask_ba, args.downscale)
+                    # I1+I2+edges+matches+gt_flow
+                    else:
+                        if args.compute_metrics:
+                            print("Last input file is a path to a ground truth flow")
+                            gt_flow = io_utils.read_flow(path_inputs[4])
+                            occ_mask = None
+                            inv_mask = None
+
+                elif len(path_inputs) == 6:
+                    # I1+I2+edges+matches+ba_matches+gt_flow
+                    if args.ba_matches_filename is not None:
+                        ba_matches_filename = path_inputs[4]
+                        img_ba, mask_ba = io_utils.load_matching_file(ba_matches_filename, width=args.img_width,
+                                                                      height=args.img_height)
+                        # downscale ba
+                        img_ba, mask_ba, _ = utils.downscale_all(img_ba, mask_ba, None, args.downscale)
+                        img, mask = utils.create_mean_map_ab_ba(img, mask, img_ba, mask_ba, args.downscale)
+                        if args.compute_metrics:
+                            print("Last input file is a path to a ground truth flow")
+                            gt_flow = io_utils.read_flow(path_inputs[5])
+                            occ_mask = None
+                            inv_mask = None
+                        else:
+                            print("Warning: gt_flow provided but compute_metrics=False"
+                                  "Won't compute error, please change the flag's value")
+                            gt_flow = None
+                            occ_mask = None
+                            inv_mask = None
+
+                    # I1+I2+edges+matches+gt_flow+occ
+                    else:
+                        if args.compute_metrics:
+                            gt_flow = io_utils.read_flow(path_inputs[4])
+                            occ_mask = sk.io.imread(path_inputs[5])
+                            inv_mask = None
+                        else:
+                            print("Warning: inputted gt_flow and occlusion mask but compute_metrics=False!"
+                                  "Won't compute error, please change the flag's value")
+                            gt_flow = None
+                            occ_mask = None
+                            inv_mask = None
+
+                elif len(path_inputs) == 7:
+                    # I1+I2+edges+matches+ba_matches+gt_flow
+                    if args.ba_matches_filename is not None:
+                        ba_matches_filename = path_inputs[4]
+                        img_ba, mask_ba = io_utils.load_matching_file(ba_matches_filename, width=args.img_width,
+                                                                      height=args.img_height)
+                        # downscale ba
+                        img_ba, mask_ba, _ = utils.downscale_all(img_ba, mask_ba, None, args.downscale)
+                        img, mask = utils.create_mean_map_ab_ba(img, mask, img_ba, mask_ba, args.downscale)
+                        if args.compute_metrics:
+                            gt_flow = io_utils.read_flow(path_inputs[5])
+                            occ_mask = sk.io.imread(path_inputs[6])
+                            inv_mask = None
+                        else:
+                            print("Warning: gt_flow and occ_mask provided but compute_metrics=False"
+                                  "Won't compute error, please change the flag's value")
+                            gt_flow = None
+                            occ_mask = None
+                            inv_mask = None
+
+                    # I1 + I2 + edges + matches + gt_flow + occ + inv
+                    else:
+                        if args.compute_metrics:
+                            gt_flow = io_utils.read_flow(path_inputs[4])
+                            occ_mask = sk.io.imread(path_inputs[5])
+                            inv_mask = sk.io.imread(path_inputs[6])
+                        else:
+                            print("Warning: inputted gt_flow, occlusions mask and invalid mask but compute_metrics"
+                                  "=False! Won't compute error, please change the flag's value")
+                            gt_flow = None
+                            occ_mask = None
+                            inv_mask = None
+
+                elif len(path_inputs) == 8:
+                    # I1+I2+edges+matches+ba_matches+gt_flow+occ+inv
+                    if args.ba_matches_filename is not None:
+                        ba_matches_filename = path_inputs[4]
+                        img_ba, mask_ba = io_utils.load_matching_file(ba_matches_filename, width=args.img_width,
+                                                                      height=args.img_height)
+                        # downscale ba
+                        img_ba, mask_ba, _ = utils.downscale_all(img_ba, mask_ba, None, args.downscale)
+                        img, mask = utils.create_mean_map_ab_ba(img, mask, img_ba, mask_ba, args.downscale)
+                        if args.compute_metrics:
+                            gt_flow = io_utils.read_flow(path_inputs[5])
+                            occ_mask = sk.io.imread(path_inputs[6])
+                            inv_mask = sk.io.imread(path_inputs[7])
+                        else:
+                            print("Warning: gt_flow and occ_mask provided but compute_metrics=False"
+                                  "Won't compute error, please change the flag's value")
+                            gt_flow = None
+                            occ_mask = None
+                            inv_mask = None
+
                 else:
-                    print("Warning: expected 5th input to be file for backward matches, continuing without it...")
+                    raise ValueError("Unexpected number of inputs, options are: (4) I1+I2+edges+matches,"
+                                     "(5) I1+I2+edges+matches+gt_flow, (5) I1+I2+edges+matches+ba_matches,"
+                                     "(6) I1+I2+edges+matches+ba_matches+gt_flow, (6) I1+I2+edges+matches+gt_flow+occ, "
+                                     "(7) I1+I2+edges+matches+ba_matches+gt_flow+occ, "
+                                     "(7) I1+I2+edges+matches+gt_flow+occ+inv or "
+                                     "(8) I1+I2+edges+matches+ba_matches+gt_flow+occ+inv")
 
                 # Compute OF and run variational post-processing
                 with tf.device('/gpu:0'):
@@ -186,8 +290,7 @@ def test_batch(args):
                         if args.compute_metrics and args.gt_flow is not None:
                             # Compute all metrics
                             metrics, not_occluded, not_disp_s010, not_disp_s1040, not_disp_s40plus = \
-                                utils.compute_all_metrics(pred_flow, args.gt_flow, occ_mask=args.occ_mask,
-                                                          inv_mask=args.inv_mask)
+                                utils.compute_all_metrics(pred_flow, gt_flow, occ_mask=occ_mask, inv_mask=inv_mask)
                             final_str_formated = utils.get_metrics(metrics, flow_fname=unique_name)
                             if args.accumulate_metrics:
                                 not_occluded_count += not_occluded
