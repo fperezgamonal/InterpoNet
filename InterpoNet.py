@@ -296,7 +296,7 @@ def test_batch(args):
                                                              'sintel')
 
                         # Read outputted flow to compute metrics
-                        pred_flow = io_utils.read_flow(out_path_full)
+                        pred_flow = io_utils.read_flow(out_flo_path)
                         # Save image visualization of predicted flow (Middlebury colour coding)
                         if args.save_image:
                             flow_img = utils.flow_to_image(pred_flow)
