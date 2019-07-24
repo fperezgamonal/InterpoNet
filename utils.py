@@ -169,6 +169,12 @@ def compute_all_metrics(est_flow, gt_flow, occ_mask=None, inv_mask=None):
     of_est_x = est_flow[:, :, 0]
     of_est_y = est_flow[:, :, 1]
 
+    print("Searching for Nans or inf at the top level (estimated flow)")
+    print("(top) pred_flow (u) has NaNs: {}".format(np.isnan(np.sum(of_est_x))))
+    print("(top) pred_flow (v) has NaNs: {}".format(np.isnan(np.sum(of_est_y))))
+    print("(top) pred_flow (u) has Infs: {}".format(np.isinf(np.sum(of_est_x))))
+    print("(top) pred_flow (v) has Infs: {}".format(np.isinf(np.sum(of_est_y))))
+
     if occ_mask is not None:
         occ_mask = occ_mask == 255  # check that once read the value is 255
     else:
@@ -331,8 +337,10 @@ def flow_error_mask(tu, tv, u, v, mask=None, gt_value=False, bord=0):
     sv = v[:]
 
     idxUnknown = (abs(stu) > UNKNOWN_FLOW_THRESH) | (abs(stv) > UNKNOWN_FLOW_THRESH) | (mask == gt_value)
-    print("pred_flow (u) number of NaNs: {}".format(np.isnan(np.sum(su))))
-    print("pred_flow (v) number of NaNs: {}".format(np.isnan(np.sum(sv))))
+    print("pred_flow (u) has NaNs: {}".format(np.isnan(np.sum(su))))
+    print("pred_flow (v) has NaNs: {}".format(np.isnan(np.sum(sv))))
+    print("pred_flow (u) has Infs: {}".format(np.isinf(np.sum(su))))
+    print("pred_flow (v) has Infs: {}".format(np.isinf(np.sum(sv))))
 
     # stu[idxUnknown] = 0
     # stv[idxUnknown] = 0
@@ -366,6 +374,7 @@ def flow_error_mask(tu, tv, u, v, mask=None, gt_value=False, bord=0):
     epe = epe[ind2]
     mepe = np.mean(epe)
     return mang, stdang, mepe
+
 
 def flow_to_image(flow):
     """
