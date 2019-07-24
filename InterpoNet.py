@@ -77,25 +77,19 @@ def test_one_image(args):
 
 
 def test_batch(args):
-    # Read first line to get image width and height from first image (assuming all have the same dimensions)
-    with open(args.img1_filename, 'r') as input_file:
-        first_line = input_file.readline()
-    tmp_filename = first_line.split()[0]
-    tmp_image = sk.io.imread(tmp_filename)
-    height, width, _ = tmp_image.shape
-    # TODO: how should we pad the edges? If once read is a binary image, pad normally, otherwise?
+    # TODO: how should we pad the edges file? If once read is a binary image, pad normally, otherwise?
     # Order: pad ==> downsample ==> upsample ==> crop
     # Compute final height and width after downsampling
     # Get padded dimensions
-    padded_height, padded_width = get_padded_image_size(og_height=height, og_width=width, divisor=args.downscale)
+    height, width = get_padded_image_size(og_height=args.img_height, og_width=args.img_width, divisor=args.downscale)
     # Get final dimensions after downsampling
-    height = int(padded_height / args.downscale)
-    width = int(padded_width / args.downscale)
+    height_downsample = int(height / args.downscale)
+    width_downsample = int(width / args.downscale)
 
     # Allocate network w. placeholders (once)
-    image_ph = tf.placeholder(tf.float32, shape=(None, height, width, 2), name='image_ph')
-    mask_ph = tf.placeholder(tf.float32, shape=(None, height, width, 1), name='mask_ph')
-    edges_ph = tf.placeholder(tf.float32, shape=(None, height, width, 1), name='edges_ph')
+    image_ph = tf.placeholder(tf.float32, shape=(None, height_downsample, width_downsample, 2), name='image_ph')
+    mask_ph = tf.placeholder(tf.float32, shape=(None, height_downsample, width_downsample, 1), name='mask_ph')
+    edges_ph = tf.placeholder(tf.float32, shape=(None, height_downsample, width_downsample, 1), name='edges_ph')
 
     forward_model = model.getNetwork(image_ph, mask_ph, edges_ph, reuse=False)
 
@@ -146,10 +140,11 @@ def test_batch(args):
                 img2_fname = path_inputs[1]
                 edges_fname = path_inputs[2]
                 matches_fname = path_inputs[3]
-                edges = io_utils.load_edges_file(edges_fname, width=width, height=height)
-
+                # Important: read and THEN pad if needed
+                # Load edges
+                edges = io_utils.load_edges_file(edges_fname, width=args.img_width, height=args.img_height)
                 # Load matching file
-                img, mask = io_utils.load_matching_file(matches_fname, width=width, height=height)
+                img, mask = io_utils.load_matching_file(matches_fname, width=args.img_width, height=args.img_height)
 
                 # downscale
                 img, mask, edges = utils.downscale_all(img, mask, edges, args.downscale)
