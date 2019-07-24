@@ -144,7 +144,6 @@ def get_metrics(metrics, average=False, flow_fname=None):
     return final_string_formatted
 
 
-# TODO: add other metrics available in the MATLAB script (EPEmat, EPEumat, S0-10, S10-40, S40+)
 def compute_all_metrics(est_flow, gt_flow, occ_mask=None, inv_mask=None):
     """
     Computes the metrics (if enough masks are provided) of MPI-Sintel (EPEall, EPEmat, EPEumat, S0-10, S10-40, S40+)
@@ -169,7 +168,7 @@ def compute_all_metrics(est_flow, gt_flow, occ_mask=None, inv_mask=None):
     of_est_x = est_flow[:, :, 0]
     of_est_y = est_flow[:, :, 1]
 
-    print("Searching for Nans or inf at the top level (estimated flow)")
+    print("Searching for Nans or inf at the top level (compute_all_metrics:1)")
     print("(top) pred_flow (u) has NaNs: {}".format(np.isnan(np.sum(of_est_x))))
     print("(top) pred_flow (v) has NaNs: {}".format(np.isnan(np.sum(of_est_y))))
     print("(top) pred_flow (u) has Infs: {}".format(np.isinf(np.sum(of_est_x))))
@@ -190,6 +189,12 @@ def compute_all_metrics(est_flow, gt_flow, occ_mask=None, inv_mask=None):
     metrics['EPEall'] = mepe
     metrics['mangall'] = mang
     metrics['stdangall'] = stdang
+
+    print("Searching for Nans or inf at the top level (compute_all_metrics:2)")
+    print("(top) pred_flow (u) has NaNs: {}".format(np.isnan(np.sum(of_est_x))))
+    print("(top) pred_flow (v) has NaNs: {}".format(np.isnan(np.sum(of_est_y))))
+    print("(top) pred_flow (u) has Infs: {}".format(np.isinf(np.sum(of_est_x))))
+    print("(top) pred_flow (v) has Infs: {}".format(np.isinf(np.sum(of_est_y))))
     # Check if there are any occluded pixels
     if occ_mask.size and np.unique(occ_mask).shape[0] > 1:  # array is not empty and contains at least 2 diff. values
         # EPE-matched (pixels that are not occluded)
@@ -216,6 +221,11 @@ def compute_all_metrics(est_flow, gt_flow, occ_mask=None, inv_mask=None):
 
         # We need to count the number of occluded instances to properly compute averages of several images
         not_occluded = 1
+    print("Searching for Nans or inf at the top level (compute_all_metrics:3)")
+    print("(top) pred_flow (u) has NaNs: {}".format(np.isnan(np.sum(of_est_x))))
+    print("(top) pred_flow (v) has NaNs: {}".format(np.isnan(np.sum(of_est_y))))
+    print("(top) pred_flow (u) has Infs: {}".format(np.isinf(np.sum(of_est_x))))
+    print("(top) pred_flow (v) has Infs: {}".format(np.isinf(np.sum(of_est_y))))
 
     metrics['EPEmat'] = mat_mepe
     metrics['mangmat'] = mat_mang
@@ -322,6 +332,7 @@ def flow_error_mask(tu, tv, u, v, mask=None, gt_value=False, bord=0):
     :param v:  estimated vertical flow map
     :param mask: binary mask that specifies a region of interest
     :param gt_value: specifies if we ignore False's (0's) or True's (0's) in the computation of a certain metric
+    :param bord:
     :return: End point error of the estimated flow
     """
     smallflow = 0.0
