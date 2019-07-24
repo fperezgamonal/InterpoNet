@@ -27,7 +27,7 @@ def test_one_image(args):
     print("Loading files...")
     edges = io_utils.load_edges_file(args.edges_filename, width=args.img_width, height=args.img_height)
 
-
+    sk.io.imsave('edges_img_ind.png', edges)
     # Load matching file
     img, mask = io_utils.load_matching_file(args.matches_filename, width=args.img_width, height=args.img_height)
 
