@@ -152,7 +152,7 @@ def load_matching_file(filename, width, height):
     else:
         x1, y1, x2, y2 = np.loadtxt(filename, dtype=np.float32, delimiter=' ', unpack=True, usecols=(0, 1, 2, 3))
         joint_cols = np.concatenate((x1, y1, x2, y2), axis=1)
-        np.savetxt('joined_matches.txt', joint_cols, delimiter=' ')
+        np.savetxt('joined_matches.txt', joint_cols, delimiter=' ', fmt='%.4f')
         # print("{}, {}, {}, {}".format(x1, y1, x2, y2))
         # img[np.array(y1, dtype=int), np.array(x1, dtype=int), :] = np.stack((x2 - x1, y2 - y1), axis=1)
         # print("{}, {}, x2-x1={}, y2-y1={}".format(np.array(y1, dtype=int), np.array(x1, dtype=int), x2 - x1, y2 - y1))
