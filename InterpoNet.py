@@ -144,7 +144,6 @@ def test_batch(args):
                 # Load edges
                 edges = io_utils.load_edges_file(edges_fname, width=args.img_width, height=args.img_height)
                 # Load matching file
-                print("matches_fname: '{}'".format(matches_fname))
                 img, mask = io_utils.load_matching_file(matches_fname, width=args.img_width, height=args.img_height)
 
                 # downscale
