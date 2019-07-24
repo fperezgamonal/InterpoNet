@@ -168,11 +168,8 @@ def compute_all_metrics(est_flow, gt_flow, occ_mask=None, inv_mask=None):
     of_est_x = est_flow[:, :, 0]
     of_est_y = est_flow[:, :, 1]
 
-    print("Searching for Nans or inf at the top level (compute_all_metrics:1)")
-    print("(top) pred_flow (u) has NaNs: {}".format(np.isnan(np.sum(of_est_x))))
-    print("(top) pred_flow (v) has NaNs: {}".format(np.isnan(np.sum(of_est_y))))
-    print("(top) pred_flow (u) has Infs: {}".format(np.isinf(np.sum(of_est_x))))
-    print("(top) pred_flow (v) has Infs: {}".format(np.isinf(np.sum(of_est_y))))
+    print("Count number of nans in of_est_x: {}".format(np.isnan(of_est_x).sum()))
+    print("Count number of nans in of_est_y: {}".format(np.isnan(of_est_y).sum()))
 
     if occ_mask is not None:
         occ_mask = occ_mask == 255  # check that once read the value is 255
@@ -190,13 +187,9 @@ def compute_all_metrics(est_flow, gt_flow, occ_mask=None, inv_mask=None):
     metrics['mangall'] = mang
     metrics['stdangall'] = stdang
 
-    print("Searching for Nans or inf at the top level (compute_all_metrics:2)")
-    print("(top) pred_flow (u) has NaNs: {}".format(np.isnan(np.sum(of_est_x))))
-    print("(top) pred_flow (v) has NaNs: {}".format(np.isnan(np.sum(of_est_y))))
-    print("(top) pred_flow (u) has Infs: {}".format(np.isinf(np.sum(of_est_x))))
-    print("(top) pred_flow (v) has Infs: {}".format(np.isinf(np.sum(of_est_y))))
     # Check if there are any occluded pixels
     if occ_mask.size and np.unique(occ_mask).shape[0] > 1:  # array is not empty and contains at least 2 diff. values
+        print("Occlusion mask is not empty")
         # EPE-matched (pixels that are not occluded)
         # Always mask out invalid pixels (inv_mask == 1)
         # For matched we want to avoid the 1's
@@ -221,11 +214,6 @@ def compute_all_metrics(est_flow, gt_flow, occ_mask=None, inv_mask=None):
 
         # We need to count the number of occluded instances to properly compute averages of several images
         not_occluded = 1
-    print("Searching for Nans or inf at the top level (compute_all_metrics:3)")
-    print("(top) pred_flow (u) has NaNs: {}".format(np.isnan(np.sum(of_est_x))))
-    print("(top) pred_flow (v) has NaNs: {}".format(np.isnan(np.sum(of_est_y))))
-    print("(top) pred_flow (u) has Infs: {}".format(np.isinf(np.sum(of_est_x))))
-    print("(top) pred_flow (v) has Infs: {}".format(np.isinf(np.sum(of_est_y))))
 
     metrics['EPEmat'] = mat_mepe
     metrics['mangmat'] = mat_mang
