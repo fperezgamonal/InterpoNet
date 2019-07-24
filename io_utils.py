@@ -87,29 +87,29 @@ def read_flow(filename):
             return np.resize(data, (h, w, 2))
 
 
-# Changed save_flow_file for similar one:
-def write(flow, filename):
+# Credits to: https://github.com/Johswald/flow-code-python/blob/master/writeFlowFile.py
+# Probably OG one with .encode should work as they are very similar
+# But we use this one as it has asserts instead of ifs and does some extra sanity checks (renamed for clarity)
+def save_flow2file(flow, filename):
 
     assert type(filename) is str, "file is not str %r" % str(filename)
-    assert filename[-4:] == '.flo', "file ending is not .flo %r" % file[-4:]
+    assert filename[-4:] == '.flo', "file ending is not .flo %r" % filename[-4:]
 
     height, width, nBands = flow.shape
     assert nBands == 2, "Number of bands = %r != 2" % nBands
-    u = flow[: , : , 0]
-    v = flow[: , : , 1]
+    u = flow[:, :, 0]
+    v = flow[:, :, 1]
     assert u.shape == v.shape, "Invalid flow shape"
     height, width = u.shape
 
-    f = open(filename, 'wb')
-    f.write(TAG_STRING.encode())
-    np.array(width).astype(np.int32).tofile(f)
-    np.array(height).astype(np.int32).tofile(f)
-    tmp = np.zeros((height, width*nBands))
-    tmp[:, np.arange(width)*2] = u
-    tmp[:, np.arange(width)*2 + 1] = v
-    tmp.astype(np.float32).tofile(f)
-
-    f.close()
+    with open(filename, 'wb') as f:
+        f.write(TAG_STRING.encode())
+        np.array(width).astype(np.int32).tofile(f)
+        np.array(height).astype(np.int32).tofile(f)
+        tmp = np.zeros((height, width*nBands))
+        tmp[:, np.arange(width)*2] = u
+        tmp[:, np.arange(width)*2 + 1] = v
+        tmp.astype(np.float32).tofile(f)
 
 
 def save_flow_file(flow, filename):
@@ -137,7 +137,7 @@ def save_flow_file(flow, filename):
         return
 
     with open(filename, 'wb') as f:
-        f.write(TAG_STRING)
+        f.write(TAG_STRING.encode())
         f.write(struct.pack('<i', width))
         f.write(struct.pack('<i', height))
         np.asarray(flow, np.float32).tofile(f)
