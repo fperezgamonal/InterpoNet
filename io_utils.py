@@ -151,13 +151,8 @@ def load_matching_file(filename, width, height):
         print('empty file: %s' % filename)
     else:
         x1, y1, x2, y2 = np.loadtxt(filename, dtype=np.float32, delimiter=' ', unpack=True, usecols=(0, 1, 2, 3))
-        # joint_cols = np.hstack((x1, y1, x2, y2))
-        # np.savetxt('joined_matches.txt', joint_cols, delimiter=' ', fmt='%.4f')
-        # print("{}, {}, {}, {}".format(x1, y1, x2, y2))
-        # img[np.array(y1, dtype=int), np.array(x1, dtype=int), :] = np.stack((x2 - x1, y2 - y1), axis=1)
-        # print("{}, {}, x2-x1={}, y2-y1={}".format(np.array(y1, dtype=int), np.array(x1, dtype=int), x2 - x1, y2 - y1))
-        for i in range(0, x1.shape[0]):
-            print("{:.2f} {:.2f} {:.2f} {:.2f}".format(x1[i], y1[i], x2[i], y2[i]))
+        # for i in range(0, x1.shape[0]):
+        #     print("{:.2f} {:.2f} {:.2f} {:.2f}".format(x1[i], y1[i], x2[i], y2[i]))
         mask[np.array(y1, dtype=int), np.array(x1, dtype=int)] = 1
         if np.any(np.isnan(img)):
             print("Nan value found")
