@@ -23,34 +23,45 @@ def get_padded_image_size(og_height, og_width, divisor=64):
 
 
 def test_one_image(args):
+    # Get padded dimensions
+    height, width = get_padded_image_size(og_height=args.img_height, og_width=args.img_width, divisor=args.downscale)
+    # Get final dimensions after downsampling
+    height_downsample = int(height / args.downscale)
+    width_downsample = int(width / args.downscale)
+
     # Load edges file
     print("Loading files...")
     edges = io_utils.load_edges_file(args.edges_filename, width=args.img_width, height=args.img_height)
 
     sk.io.imsave('edges_img_ind.png', edges)
     # Load matching file
-    img, mask = io_utils.load_matching_file(args.matches_filename, width=args.img_width, height=args.img_height)
+    sparse_flow, mask_matches = io_utils.load_matching_file(args.matches_filename, width=args.img_width,
+                                                            height=args.img_height)
 
     # downscale
     print("Downscaling...")
-    img, mask, edges = utils.downscale_all(img, mask, edges, args.downscale)
+    sparse_flow, mask_matches, edges = utils.downscale_all(sparse_flow, mask_matches, edges, args.downscale)
 
     if args.ba_matches_filename is not None:
-        img_ba, mask_ba = io_utils.load_matching_file(args.ba_matches_filename, width=args.img_width,
-                                                      height=args.img_height)
+        sparse_flow_ba, mask_matches_ba = io_utils.load_matching_file(args.ba_matches_filename, width=args.img_width,
+                                                                      height=args.img_height)
 
         # downscale ba
-        img_ba, mask_ba, _ = utils.downscale_all(img_ba, mask_ba, None, args.downscale)
-        img, mask = utils.create_mean_map_ab_ba(img, mask, img_ba, mask_ba, args.downscale)
+        sparse_flow_ba, mask_matches_ba, _ = utils.downscale_all(sparse_flow_ba, mask_matches_ba, None, args.downscale)
+        sparse_flow, mask_matches = utils.create_mean_map_ab_ba(sparse_flow, mask_matches, sparse_flow_ba,
+                                                                mask_matches_ba, args.downscale)
 
     with tf.device('/gpu:0'):
         with tf.Graph().as_default():
 
-            image_ph = tf.placeholder(tf.float32, shape=(None, img.shape[0], img.shape[1], 2), name='image_ph')
-            mask_ph = tf.placeholder(tf.float32, shape=(None, img.shape[0], img.shape[1], 1), name='mask_ph')
-            edges_ph = tf.placeholder(tf.float32, shape=(None, img.shape[0], img.shape[1], 1), name='edges_ph')
+            sparse_flow_ph = tf.placeholder(tf.float32, shape=(None, height_downsample, width_downsample, 2),
+                                            name='image_ph')
+            matches_mask_ph = tf.placeholder(tf.float32, shape=(None, height_downsample, width_downsample, 1),
+                                             name='mask_ph')
+            edges_ph = tf.placeholder(tf.float32, shape=(None, height_downsample, width_downsample, 1),
+                                      name='edges_ph')
 
-            forward_model = model.getNetwork(image_ph, mask_ph, edges_ph, reuse=False)
+            forward_model = model.getNetwork(sparse_flow_ph, matches_mask_ph, edges_ph, reuse=False)
 
             saver_keep = tf.train.Saver(tf.all_variables(), max_to_keep=0)
 
@@ -59,20 +70,22 @@ def test_one_image(args):
             saver_keep.restore(sess, args.model_filename)
 
             print("Performing inference...")
-            prediction = sess.run(forward_model,
-                                  feed_dict={image_ph: np.expand_dims(img, axis=0),
-                                             mask_ph: np.reshape(mask, [1, mask.shape[0], mask.shape[1], 1]),
-                                             edges_ph: np.expand_dims(np.expand_dims(edges, axis=0), axis=3),
-                                             })
+            prediction = sess.run(forward_model, feed_dict={
+                sparse_flow_ph: np.expand_dims(sparse_flow, axis=0),
+                matches_mask_ph: np.reshape(mask_matches, [1, mask_matches.shape[0], mask_matches.shape[1], 1]),
+                edges_ph: np.expand_dims(np.expand_dims(edges, axis=0), axis=3),
+            })
             print("Upscaling...")
-            upscaled_pred = sk.transform.resize(prediction[0], [args.img_height, args.img_width, 2],
+            upscaled_pred = sk.transform.resize(prediction[0], [height, width, 2],
                                                 preserve_range=True, order=3)
 
-            io_utils.save_flow2file(upscaled_pred, filename='out_no_var.flo')
+            if not os.path.isdir('tmp_interponet'):
+                os.makedirs('tmp_interponet')
+            io_utils.save_flow2file(upscaled_pred, filename='tmp_interponet/out_no_var.flo')
 
             print("Variational post Processing...")
-            utils.calc_variational_inference_map(args.img1_filename, args.img2_filename, 'out_no_var.flo',
-                                                 args.out_filename, 'sintel')
+            utils.calc_variational_inference_map(args.img1_filename, args.img2_filename,
+                                                 'tmp_interponet/out_no_var.flo', args.out_filename, 'sintel')
 
 
 def test_batch(args):
@@ -135,20 +148,20 @@ def test_batch(args):
                     ' I1+I2+edges+matches+backward_matches(5) or I1+I2+edges+matches+backward_matches+gtflow(6)')
                 # Common operations to all input sizes
                 # Read input frames (for variational)
-                img1_fname = path_inputs[0]
-                img2_fname = path_inputs[1]
+                img1 = sk.io.imread(path_inputs[0])
+                img2 = sk.io.imread(path_inputs[1])
                 edges_fname = path_inputs[2]
                 matches_fname = path_inputs[3]
                 # Important: read and THEN pad if needed
                 # Load edges
                 edges = io_utils.load_edges_file(edges_fname, width=args.img_width, height=args.img_height)
-                sk.io.imsave('edges_img.png', edges)
 
-                # Load matching file
-                img, mask = io_utils.load_matching_file(matches_fname, width=args.img_width, height=args.img_height)
+                # Load matching file (+initialise sparse flow)
+                sparse_flow, mask_matches = io_utils.load_matching_file(matches_fname, width=args.img_width,
+                                                                        height=args.img_height)
 
                 # downscale
-                img, mask, edges = utils.downscale_all(img, mask, edges, args.downscale)
+                sparse_flow, mask_matches, edges = utils.downscale_all(sparse_flow, mask_matches, edges, args.downscale)
                 # I1 + I2 + edges + matches
                 if len(path_inputs) == 4:
                     print("Input type is: I1+I2+edges+matches, so no error metrics can be computed")
@@ -157,11 +170,15 @@ def test_batch(args):
                     # I1+I2+edges+matches+ba_matches
                     if args.ba_matches_filename is not None:
                         ba_matches_filename = path_inputs[4]
-                        img_ba, mask_ba = io_utils.load_matching_file(ba_matches_filename, width=args.img_width,
-                                                                      height=args.img_height)
+                        sparse_flow_ba, mask_matches_ba = io_utils.load_matching_file(ba_matches_filename,
+                                                                                      width=args.img_width,
+                                                                                      height=args.img_height)
                         # downscale ba
-                        img_ba, mask_ba, _ = utils.downscale_all(img_ba, mask_ba, None, args.downscale)
-                        img, mask = utils.create_mean_map_ab_ba(img, mask, img_ba, mask_ba, args.downscale)
+                        sparse_flow_ba, mask_matches_ba, _ = utils.downscale_all(sparse_flow_ba, mask_matches_ba, None,
+                                                                                 args.downscale)
+                        sparse_flow, mask_matches = utils.create_mean_map_ab_ba(sparse_flow, mask_matches,
+                                                                                sparse_flow_ba, mask_matches_ba,
+                                                                                args.downscale)
 
                     # I1+I2+edges+matches+gt_flow
                     else:
@@ -175,11 +192,14 @@ def test_batch(args):
                     # I1+I2+edges+matches+ba_matches+gt_flow
                     if args.ba_matches_filename is not None:
                         ba_matches_filename = path_inputs[4]
-                        img_ba, mask_ba = io_utils.load_matching_file(ba_matches_filename, width=args.img_width,
-                                                                      height=args.img_height)
+                        sparse_flow_ba, mask_matches_ba = io_utils.load_matching_file(ba_matches_filename,
+                                                                                      width=args.img_width,
+                                                                                      height=args.img_height)
                         # downscale ba
-                        img_ba, mask_ba, _ = utils.downscale_all(img_ba, mask_ba, None, args.downscale)
-                        img, mask = utils.create_mean_map_ab_ba(img, mask, img_ba, mask_ba, args.downscale)
+                        sparse_flow_ba, mask_matches_ba, _ = utils.downscale_all(sparse_flow_ba, mask_matches_ba, None,
+                                                                                 args.downscale)
+                        sparse_flow, mask_matches = utils.create_mean_map_ab_ba(sparse_flow, mask_matches, sparse_flow_ba,
+                                                                mask_matches_ba, args.downscale)
                         if args.compute_metrics:
                             print("Last input file is a path to a ground truth flow")
                             gt_flow = io_utils.read_flow(path_inputs[5])
@@ -209,11 +229,15 @@ def test_batch(args):
                     # I1+I2+edges+matches+ba_matches+gt_flow
                     if args.ba_matches_filename is not None:
                         ba_matches_filename = path_inputs[4]
-                        img_ba, mask_ba = io_utils.load_matching_file(ba_matches_filename, width=args.img_width,
-                                                                      height=args.img_height)
+                        sparse_flow_ba, mask_matches_ba = io_utils.load_matching_file(ba_matches_filename,
+                                                                                      width=args.img_width,
+                                                                                      height=args.img_height)
                         # downscale ba
-                        img_ba, mask_ba, _ = utils.downscale_all(img_ba, mask_ba, None, args.downscale)
-                        img, mask = utils.create_mean_map_ab_ba(img, mask, img_ba, mask_ba, args.downscale)
+                        sparse_flow_ba, mask_matches_ba, _ = utils.downscale_all(sparse_flow_ba, mask_matches_ba, None,
+                                                                                 args.downscale)
+                        sparse_flow, mask_matches = utils.create_mean_map_ab_ba(sparse_flow, mask_matches,
+                                                                                sparse_flow_ba, mask_matches_ba,
+                                                                                args.downscale)
                         if args.compute_metrics:
                             gt_flow = io_utils.read_flow(path_inputs[5])
                             occ_mask = sk.io.imread(path_inputs[6])
@@ -242,11 +266,15 @@ def test_batch(args):
                     # I1+I2+edges+matches+ba_matches+gt_flow+occ+inv
                     if args.ba_matches_filename is not None:
                         ba_matches_filename = path_inputs[4]
-                        img_ba, mask_ba = io_utils.load_matching_file(ba_matches_filename, width=args.img_width,
-                                                                      height=args.img_height)
+                        sparse_flow_ba, mask_matches_ba = io_utils.load_matching_file(ba_matches_filename,
+                                                                                      width=args.img_width,
+                                                                                      height=args.img_height)
                         # downscale ba
-                        img_ba, mask_ba, _ = utils.downscale_all(img_ba, mask_ba, None, args.downscale)
-                        img, mask = utils.create_mean_map_ab_ba(img, mask, img_ba, mask_ba, args.downscale)
+                        sparse_flow_ba, mask_matches_ba, _ = utils.downscale_all(sparse_flow_ba, mask_matches_ba, None,
+                                                                                 args.downscale)
+                        sparse_flow, mask_matches = utils.create_mean_map_ab_ba(sparse_flow, mask_matches,
+                                                                                sparse_flow_ba, mask_matches_ba,
+                                                                                args.downscale)
                         if args.compute_metrics:
                             gt_flow = io_utils.read_flow(path_inputs[5])
                             occ_mask = sk.io.imread(path_inputs[6])
@@ -265,21 +293,26 @@ def test_batch(args):
                                      "(7) I1+I2+edges+matches+ba_matches+gt_flow+occ, "
                                      "(7) I1+I2+edges+matches+gt_flow+occ+inv or "
                                      "(8) I1+I2+edges+matches+ba_matches+gt_flow+occ+inv")
+                # Pad images if they are not divisible by the downscale factor
+                img1, img2, edges, mask_matches, sparse_flow, x_info = utils.adapt_x(img1, img2, edges, mask_matches,
+                                                                                     sparse_flow)
 
                 # Compute OF and run variational post-processing
                 with tf.device('/gpu:0'):
                     with tf.Graph().as_default():
-                        prediction = sess.run(forward_model, feed_dict={image_ph: np.expand_dims(img, axis=0),
-                                                                        mask_ph: np.reshape(mask, [1, mask.shape[0],
-                                                                                                   mask.shape[1], 1]),
-                                                                        edges_ph: np.expand_dims(
-                                                                            np.expand_dims(edges, axis=0), axis=3),
-                                                                        })
+                        prediction = sess.run(forward_model, feed_dict={
+                            image_ph: np.expand_dims(sparse_flow, axis=0),
+                            mask_ph: np.reshape(mask_matches, [1, mask_matches.shape[0], mask_matches.shape[1], 1]),
+                            edges_ph: np.expand_dims(
+                                np.expand_dims(edges, axis=0), axis=3),
+                        })
                         # Upscale prediction
-                        upscaled_pred = sk.transform.resize(prediction[0], [args.img_height, args.img_width, 2],
+                        upscaled_pred = sk.transform.resize(prediction[0], [height, width, 2],
                                                             preserve_range=True, order=3)
 
-                        io_utils.save_flow2file(upscaled_pred, filename='out_no_var.flo')
+                        if not os.path.isdir('tmp_interponet'):
+                            os.makedirs('tmp_interponet')
+                        io_utils.save_flow2file(upscaled_pred, filename='tmp_interponet/out_no_var.flo')
 
                         parent_folder_name = path_inputs[0].split('/')[-2] if args.new_par_folder is None \
                             else args.new_par_folder
@@ -291,21 +324,28 @@ def test_batch(args):
                         out_flo_path = os.path.join(out_path_complete, unique_name + '_flow.flo')
 
                         # Variational post Processing
-                        utils.calc_variational_inference_map(img1_fname, img2_fname, 'out_no_var.flo', out_flo_path,
-                                                             'sintel')
+                        # calc_variational_inference_map read img1 and img2 from the filename directly, must save
+                        # padded versions
+                        tmp_img1_fname = 'tmp_interponet/img1_padded.png'
+                        tmp_img2_fname = 'tmp_interponet/img2_padded.png'
+                        utils.calc_variational_inference_map(tmp_img1_fname, tmp_img2_fname,
+                                                             'tmp_interponet/out_no_var.flo', out_flo_path, 'sintel')
 
                         # Read outputted flow to compute metrics
                         pred_flow = io_utils.read_flow(out_flo_path)
+                        # Crop to original file (if needed)
+                        pred_flow_cropped = utils.postproc_y_hat_test(pred_flow, adapt_info=x_info)
                         # Save image visualization of predicted flow (Middlebury colour coding)
                         if args.save_image:
-                            flow_img = utils.flow_to_image(pred_flow)
+                            flow_img = utils.flow_to_image(pred_flow_cropped)
                             out_path_full = os.path.join(out_path_complete, unique_name + '_viz.png')
                             sk.io.imsave(out_path_full, flow_img)
 
                         if args.compute_metrics and args.gt_flow is not None:
                             # Compute all metrics
                             metrics, not_occluded, not_disp_s010, not_disp_s1040, not_disp_s40plus = \
-                                utils.compute_all_metrics(pred_flow, gt_flow, occ_mask=occ_mask, inv_mask=inv_mask)
+                                utils.compute_all_metrics(pred_flow_cropped, gt_flow, occ_mask=occ_mask,
+                                                          inv_mask=inv_mask)
                             final_str_formated = utils.get_metrics(metrics, flow_fname=unique_name)
                             if args.accumulate_metrics:
                                 not_occluded_count += not_occluded

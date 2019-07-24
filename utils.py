@@ -2,6 +2,7 @@ import numpy as np
 import os
 from skimage.util.shape import view_as_blocks
 from skimage.transform import rescale
+from math import ceil
 
 UNKNOWN_FLOW_THRESH = 1e9
 SMALLFLOW = 0.0
@@ -107,9 +108,10 @@ def calc_variational_inference_map(imgA_filename, imgB_filename, flo_filename, o
     :param out_filename: filename for the output flow map.
     :param dataset: sintel / kitti
     """
-    shell_command = './SrcVariational/variational_main ' + imgA_filename + ' ' + imgB_filename + ' ' + flo_filename +\
+    shell_command = './SrcVariational/variational_main ' + imgA_filename + ' ' + imgB_filename + ' ' + flo_filename + \
                     ' ' + out_filename + ' -' + dataset
     exit_code = os.system(shell_command)
+
 
 # Added some utils from https://github.com/fperezgamonal/flownet2-tf to compute metrics
 def get_metrics(metrics, average=False, flow_fname=None):
@@ -336,10 +338,6 @@ def flow_error_mask(tu, tv, u, v, mask=None, gt_value=False, bord=0):
     sv = v[:]
 
     idxUnknown = (abs(stu) > UNKNOWN_FLOW_THRESH) | (abs(stv) > UNKNOWN_FLOW_THRESH) | (mask == gt_value)
-    print("pred_flow (u) has NaNs: {}".format(np.isnan(np.sum(su))))
-    print("pred_flow (v) has NaNs: {}".format(np.isnan(np.sum(sv))))
-    print("pred_flow (u) has Infs: {}".format(np.isinf(np.sum(su))))
-    print("pred_flow (v) has Infs: {}".format(np.isinf(np.sum(sv))))
 
     # stu[idxUnknown] = 0
     # stv[idxUnknown] = 0
@@ -415,6 +413,7 @@ def flow_to_image(flow):
     img[idx] = 0
 
     return np.uint8(img)
+
 
 def compute_color(u, v):
     """
@@ -508,3 +507,83 @@ def make_color_wheel():
     colorwheel[col:col+MR, 0] = 255
 
     return colorwheel
+
+
+# === Pad/crop images not divisible by the downsampling factor
+
+# based on github.com/philferriere/tfoptflow/blob/33e8a701e34c8ce061f17297d40619afbd459ade/tfoptflow/model_pwcnet.py
+# functions: adapt_x, adapt_y, postproc_y_hat (crop)
+def adapt_x(img_1, img_2, edges_img, matches_img, ba_matches_img=None, divisor=8):
+    """
+    Adapts the input images/matches to the required network dimensions
+    :param img_1: first image
+    :param img_2: second image
+    :param edges_img: SED edges of img_1 (reference/guide)
+    :param matches_img: forward matches between first and second image
+    :param ba_matches_img: forward matches between second and first image
+    :param divisor: (optional) number by which all image sizes should be divisible by
+    :return: padded and normalised inputs
+    """
+    height_a, width_a, channels_a = img_1.shape  # temporal hack so it works with any size (batch or not)
+
+    if height_a % divisor != 0 or width_a % divisor != 0:
+        new_height = int(ceil(height_a / divisor) * divisor)
+        new_width = int(ceil(width_a / divisor) * divisor)
+        pad_height = new_height - height_a
+        pad_width = new_width - width_a
+
+        padding = [(0, 0), (0, pad_height), (0, pad_width), (0, 0)]
+
+        x_adapt_info = img_1.shape  # Save original shape (used to crop afterwards)
+        img_1 = np.pad(img_1, padding, mode='constant', constant_values=0.)
+        img_2 = np.pad(img_2, padding, mode='constant', constant_values=0.)
+        edges_img = np.pad(edges_img, padding, mode='constant', constant_values=0.)
+        matches_img = np.pad(matches_img, padding, mode='constant', constant_values=0.)
+        if ba_matches_img is not None:
+            ba_matches_img = np.pad(ba_matches_img, padding, mode='constant', constant_values=0.)
+    else:
+        x_adapt_info = None
+
+    return img_1, img_2, edges_img, matches_img, ba_matches_img, x_adapt_info
+
+
+# Equivalent function for flows
+def adapt_y(flow, divisor=8):
+    """
+    Adapts the ground truth flows to train to the required network dimensions
+    :param flow: ground truth optical flow between first and second image
+    :param divisor: divisor by which all image sizes should be divisible by.
+    :return: padded ground truth optical flow
+    """
+    # Assert it is a valid flow
+    assert flow.shape[-1] == 2
+    height = flow.shape[-3]  # temporally as this to account for batch/no batch tensor dimensions (also in adapt_x)
+    width = flow.shape[-2]
+
+    if height % divisor != 0 or width % divisor != 0:
+        new_height = int(ceil(height / divisor) * divisor)
+        new_width = int(ceil(width / divisor) * divisor)
+        pad_height = new_height - height
+        pad_width = new_width - width
+
+        padding = [(0, pad_height), (0, pad_width), (0, 0)]
+        y_adapt_info = flow.shape  # Save original size
+        flow = np.pad(flow, padding, mode='constant', constant_values=0.)
+    else:
+        y_adapt_info = None
+
+    return flow, y_adapt_info
+
+
+# Function to crop predicted OF to OG size (complementary to the previous one)
+def postproc_y_hat_test(pred_flows, adapt_info=None):
+    """
+    Postprocess the output flows during test mode
+    :param pred_flows: predictions
+    :param adapt_info: None if input image is multiple of 'divisor', original size otherwise
+    :return: post-processed flow (cropped to original size if need be)
+    """
+    if adapt_info is not None:  # must define it when padding!
+        # pred_flows = pred_flows[:, 0:adapt_info[1], 0:adapt_info[2], :]  # batch!
+        pred_flows = pred_flows[0:adapt_info[-3], 0:adapt_info[-2], :]  # one sample
+    return pred_flows
