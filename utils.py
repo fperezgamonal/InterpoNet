@@ -306,6 +306,7 @@ def compute_all_metrics(est_flow, gt_flow, occ_mask=None, inv_mask=None):
 
     return metrics, not_occluded, s0_10_is_zero, s10_40_is_zero, s40plus_is_zero
 
+
 def flow_error_mask(tu, tv, u, v, mask=None, gt_value=False, bord=0):
     """
     Calculate average end point error
@@ -330,6 +331,9 @@ def flow_error_mask(tu, tv, u, v, mask=None, gt_value=False, bord=0):
     sv = v[:]
 
     idxUnknown = (abs(stu) > UNKNOWN_FLOW_THRESH) | (abs(stv) > UNKNOWN_FLOW_THRESH) | (mask == gt_value)
+    print("pred_flow (u) number of NaNs: {}".format(np.isnan(np.sum(su))))
+    print("pred_flow (v) number of NaNs: {}".format(np.isnan(np.sum(sv))))
+
     # stu[idxUnknown] = 0
     # stv[idxUnknown] = 0
     # su[idxUnknown] = 0
