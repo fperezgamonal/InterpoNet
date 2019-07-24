@@ -101,7 +101,7 @@ def write(flow, filename):
     height, width = u.shape
 
     f = open(filename, 'wb')
-    f.write(TAG_STRING)
+    f.write(TAG_STRING.encode())
     np.array(width).astype(np.int32).tofile(f)
     np.array(height).astype(np.int32).tofile(f)
     tmp = np.zeros((height, width*nBands))
