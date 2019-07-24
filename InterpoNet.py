@@ -86,7 +86,7 @@ def test_batch(args):
     # TODO: how should we pad the edges? If once read is a binary image, pad normally, otherwise?
     # Order: pad ==> downsample ==> upsample ==> crop
     # Compute final height and width after downsampling
-    height, width = get_padded_image_size(og_height=height, og_width=width, divisor=args.downsample)
+    height, width = get_padded_image_size(og_height=height, og_width=width, divisor=args.downscale)
     # Allocate network w. placeholders (once)
     image_ph = tf.placeholder(tf.float32, shape=(None, height, width, 2), name='image_ph')
     mask_ph = tf.placeholder(tf.float32, shape=(None, height, width, 1), name='mask_ph')
