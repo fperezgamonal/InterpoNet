@@ -284,12 +284,12 @@ def test_batch(args):
 
                         parent_folder_name = path_inputs[0].split('/')[-2] if args.new_par_folder is None \
                             else args.new_par_folder
-                        unique_name = path_inputs[0].split('/')[-1][:-4]
+                        unique_name = os.path.basename(path_inputs[0])[:-4]
                         out_path_complete = os.path.join(args.out_filename, parent_folder_name)
                         if not os.path.isdir(out_path_complete):
                             os.makedirs(out_path_complete)
 
-                        out_flo_path = os.path.join(out_path_complete, unique_name, '_flow.flo')
+                        out_flo_path = os.path.join(out_path_complete, unique_name + '_flow.flo')
 
                         # Variational post Processing
                         utils.calc_variational_inference_map(img1_fname, img2_fname, 'out_no_var.flo', out_flo_path,
