@@ -71,6 +71,7 @@ def test_one_image(args):
             # io_utils.save_flow_file(upscaled_pred, filename='out_no_var.flo')
             # save_flow_file uses deprecated code
             io_utils.write_flow(upscaled_pred, filename='out_no_var.flo')
+            io_utils.write_flow(upscaled_pred[:500, :500, :], filename='out_no_var_part.flo')
 
             print("Variational post Processing...")
             utils.calc_variational_inference_map(args.img1_filename, args.img2_filename, 'out_no_var.flo',
