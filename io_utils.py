@@ -5,6 +5,8 @@ import argparse
 
 DEBUG = False
 
+TAG_STRING = 'PIEH'
+
 
 def str2bool(v):
     if isinstance(v, bool):
@@ -83,6 +85,31 @@ def read_flow(filename):
             data = np.fromfile(f, np.float32, count=2*w*h)
             # Reshape data into 3D array (columns, rows, bands)
             return np.resize(data, (h, w, 2))
+
+
+# Changed save_flow_file for similar one:
+def write(flow, filename):
+
+    assert type(filename) is str, "file is not str %r" % str(filename)
+    assert filename[-4:] == '.flo', "file ending is not .flo %r" % file[-4:]
+
+    height, width, nBands = flow.shape
+    assert nBands == 2, "Number of bands = %r != 2" % nBands
+    u = flow[: , : , 0]
+    v = flow[: , : , 1]
+    assert u.shape == v.shape, "Invalid flow shape"
+    height, width = u.shape
+
+    f = open(filename, 'wb')
+    f.write(TAG_STRING)
+    np.array(width).astype(np.int32).tofile(f)
+    np.array(height).astype(np.int32).tofile(f)
+    tmp = np.zeros((height, width*nBands))
+    tmp[:, np.arange(width)*2] = u
+    tmp[:, np.arange(width)*2 + 1] = v
+    tmp.astype(np.float32).tofile(f)
+
+    f.close()
 
 
 def save_flow_file(flow, filename):
