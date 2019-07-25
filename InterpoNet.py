@@ -218,7 +218,6 @@ def test_batch(args):
                     # I1+I2+edges+matches+gt_flow
                     else:
                         if args.compute_metrics:
-                            print("Last input file is a path to a ground truth flow")
                             gt_flow = io_utils.read_flow(path_inputs[4])
                             occ_mask = None
                             inv_mask = None
@@ -237,7 +236,6 @@ def test_batch(args):
                                                                                 sparse_flow_ba, mask_matches_ba,
                                                                                 args.downscale)
                         if args.compute_metrics:
-                            print("Last input file is a path to a ground truth flow")
                             gt_flow = io_utils.read_flow(path_inputs[5])
                             occ_mask = None
                             inv_mask = None
