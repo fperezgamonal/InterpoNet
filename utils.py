@@ -509,7 +509,7 @@ def make_color_wheel():
 
 
 # === Pad/crop images not divisible by the downsampling factor
-
+# NOTE: not used ATM since downscale_all already adapts images BUT does so by cropping original content
 # based on github.com/philferriere/tfoptflow/blob/33e8a701e34c8ce061f17297d40619afbd459ade/tfoptflow/model_pwcnet.py
 # functions: adapt_x, adapt_y, postproc_y_hat (crop)
 def adapt_x(img_1, img_2, edges_img, matches_img, ba_matches_img=None, divisor=8):

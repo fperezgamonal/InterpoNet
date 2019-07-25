@@ -29,6 +29,8 @@ def test_one_image(args):
     # Load matching file
     sparse_flow, mask_matches = io_utils.load_matching_file(args.matches_filename, width=args.img_width,
                                                             height=args.img_height)
+    print("FF semi-dense initial flow has matches in {:.2%} of pixels".format(np.sum(mask_matches != -1) /
+                                                                              np.prod(mask_matches.shape)))
 
     # downscale
     print("Downscaling...")
@@ -135,14 +137,13 @@ def test_batch(args):
         with open(args.img1_filename, 'r') as input_file:
             path_list = input_file.readlines()
 
-            if args.compute_metrics and args.accumulate_metrics:
-                # Initialise some auxiliar variables to track metrics
-                add_metrics = np.array([])
-                # Auxiliar counters for metrics
-                not_occluded_count = 0
-                not_disp_S0_10_count = 0
-                not_disp_S10_40_count = 0
-                not_disp_S40plus_count = 0
+            # Initialise some auxiliar variables to track metrics
+            add_metrics = np.array([])
+            # Auxiliar counters for metrics
+            not_occluded_count = 0
+            not_disp_S0_10_count = 0
+            not_disp_S10_40_count = 0
+            not_disp_S40plus_count = 0
             if args.log_metrics2file:
                 basefile = os.path.basename(args.img1_filename)
                 logfile = basefile.replace('.txt', '_metrics.log')
@@ -313,9 +314,7 @@ def test_batch(args):
                                      "(7) I1+I2+edges+matches+ba_matches+gt_flow+occ, "
                                      "(7) I1+I2+edges+matches+gt_flow+occ+inv or "
                                      "(8) I1+I2+edges+matches+ba_matches+gt_flow+occ+inv")
-                # # Pad images if they are not divisible by the downscale factor
-                # img1, img2, edges, mask_matches, sparse_flow, x_info = utils.adapt_x(img1, img2, edges, mask_matches,
-                #                                                                      sparse_flow)
+                # If at some moment we want to pad with zeros instead of cropping, use here utils.adapt_x
 
                 # Compute OF and run variational post-processing
                 with tf.device('/gpu:0'):
@@ -343,21 +342,13 @@ def test_batch(args):
 
                         out_flo_path = os.path.join(out_path_complete, unique_name + '_flow.flo')
 
-                        # calc_variational_inference_map reads img1 and img2 from the filename directly, must save
-                        # padded versions
-                        # tmp_img1_fname = 'tmp_interponet/img1_padded.png'
-                        # tmp_img2_fname = 'tmp_interponet/img2_padded.png'
-                        # sk.io.imsave(tmp_img1_fname, img1)
-                        # sk.io.imsave(tmp_img2_fname, img2)
-
                         # Variational post Processing
                         utils.calc_variational_inference_map(img1_filename, img2_filename,
                                                              'tmp_interponet/out_no_var.flo', out_flo_path, 'sintel')
 
                         # Read outputted flow to compute metrics
                         pred_flow = io_utils.read_flow(out_flo_path)
-                        # Crop to original file (if needed)
-                        # pred_flow_cropped = utils.postproc_y_hat_test(pred_flow, adapt_info=x_info)
+
                         # Save image visualization of predicted flow (Middlebury colour coding)
                         if args.save_image:
                             flow_img = utils.flow_to_image(pred_flow)
