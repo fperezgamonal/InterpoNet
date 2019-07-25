@@ -34,7 +34,6 @@ def test_one_image(args):
     print("Loading files...")
     edges = io_utils.load_edges_file(args.edges_filename, width=args.img_width, height=args.img_height)
 
-    sk.io.imsave('edges_img_ind.png', edges)
     # Load matching file
     sparse_flow, mask_matches = io_utils.load_matching_file(args.matches_filename, width=args.img_width,
                                                             height=args.img_height)
@@ -52,13 +51,18 @@ def test_one_image(args):
         sparse_flow, mask_matches = utils.create_mean_map_ab_ba(sparse_flow, mask_matches, sparse_flow_ba,
                                                                 mask_matches_ba, args.downscale)
 
+    # Pad images if they are not divisible by the downscale factor
+    img1 = sk.io.imread(args.img1_filename)
+    img2 = sk.io.imread(args.img2_filename)
+    img1, img2, edges, mask_matches, sparse_flow, x_info = utils.adapt_x(img1, img2, edges, mask_matches,
+                                                                         sparse_flow)
     with tf.device('/gpu:0'):
         with tf.Graph().as_default():
 
             sparse_flow_ph = tf.placeholder(tf.float32, shape=(None, height_downsample, width_downsample, 2),
-                                            name='image_ph')
+                                            name='sparse_flow_ph')
             matches_mask_ph = tf.placeholder(tf.float32, shape=(None, height_downsample, width_downsample, 1),
-                                             name='mask_ph')
+                                             name='matches_mask_ph')
             edges_ph = tf.placeholder(tf.float32, shape=(None, height_downsample, width_downsample, 1),
                                       name='edges_ph')
 
@@ -84,9 +88,34 @@ def test_one_image(args):
                 os.makedirs('tmp_interponet')
             io_utils.save_flow2file(upscaled_pred, filename='tmp_interponet/out_no_var.flo')
 
+            # calc_variational_inference_map reads img1 and img2 from the filename directly, must save
+            # padded versions
+            tmp_img1_fname = 'tmp_interponet/img1_padded.png'
+            tmp_img2_fname = 'tmp_interponet/img2_padded.png'
+            sk.io.imsave(tmp_img1_fname, img1)
+            sk.io.imsave(tmp_img2_fname, img2)
+
             print("Variational post Processing...")
-            utils.calc_variational_inference_map(args.img1_filename, args.img2_filename,
+            utils.calc_variational_inference_map(tmp_img1_fname, tmp_img2_fname,
                                                  'tmp_interponet/out_no_var.flo', args.out_filename, 'sintel')
+
+            parent_folder_name = 'interponet_one_inference' if args.new_par_folder is None \
+                else args.new_par_folder
+            unique_name = os.path.basename(args.img1_filename)[:-4]
+            out_path_complete = os.path.join(args.out_filename, parent_folder_name)
+            if not os.path.isdir(out_path_complete):
+                os.makedirs(out_path_complete)
+
+            out_flo_path = os.path.join(out_path_complete, unique_name + '_flow.flo')
+            # Read outputted flow to compute metrics
+            pred_flow = io_utils.read_flow(out_flo_path)
+            # Crop to original file (if needed)
+            pred_flow_cropped = utils.postproc_y_hat_test(pred_flow, adapt_info=x_info)
+            # Save image visualization of predicted flow (Middlebury colour coding)
+            if args.save_image:
+                flow_img = utils.flow_to_image(pred_flow_cropped)
+                out_path_full = os.path.join(out_path_complete, unique_name + '_viz.png')
+                sk.io.imsave(out_path_full, flow_img)
 
             # Remove temporal directory and everything in it
             shutil.rmtree('tmp_interponet')
@@ -330,11 +359,14 @@ def test_batch(args):
 
                         out_flo_path = os.path.join(out_path_complete, unique_name + '_flow.flo')
 
-                        # Variational post Processing
-                        # calc_variational_inference_map read img1 and img2 from the filename directly, must save
+                        # calc_variational_inference_map reads img1 and img2 from the filename directly, must save
                         # padded versions
                         tmp_img1_fname = 'tmp_interponet/img1_padded.png'
                         tmp_img2_fname = 'tmp_interponet/img2_padded.png'
+                        sk.io.imsave(tmp_img1_fname, img1)
+                        sk.io.imsave(tmp_img2_fname, img2)
+
+                        # Variational post Processing
                         utils.calc_variational_inference_map(tmp_img1_fname, tmp_img2_fname,
                                                              'tmp_interponet/out_no_var.flo', out_flo_path, 'sintel')
 

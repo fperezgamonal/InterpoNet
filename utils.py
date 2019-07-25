@@ -170,9 +170,6 @@ def compute_all_metrics(est_flow, gt_flow, occ_mask=None, inv_mask=None):
     of_est_x = est_flow[:, :, 0]
     of_est_y = est_flow[:, :, 1]
 
-    print("Count number of nans in of_est_x: {}".format(np.isnan(of_est_x).sum()))
-    print("Count number of nans in of_est_y: {}".format(np.isnan(of_est_y).sum()))
-
     if occ_mask is not None:
         occ_mask = occ_mask == 255  # check that once read the value is 255
     else:
