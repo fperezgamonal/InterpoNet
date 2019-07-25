@@ -29,8 +29,6 @@ def test_one_image(args):
     # Load matching file
     sparse_flow, mask_matches = io_utils.load_matching_file(args.matches_filename, width=args.img_width,
                                                             height=args.img_height)
-    print("FF semi-dense initial flow has matches in {:.2%} of pixels".format(np.sum(mask_matches != -1) /
-                                                                              np.prod(mask_matches.shape)))
 
     # downscale
     print("Downscaling...")
@@ -182,6 +180,9 @@ def test_batch(args):
                 sparse_flow, mask_matches = io_utils.load_matching_file(matches_fname, width=args.img_width,
                                                                         height=args.img_height)
 
+                # tmp to get more info
+                print("FF semi-dense initial flow has matches in {:.2%} of pixels".format(np.sum(mask_matches != -1) /
+                                                                                          np.prod(mask_matches.shape)))
                 # downscale
                 sparse_flow, mask_matches, edges = utils.downscale_all(sparse_flow, mask_matches, edges, args.downscale)
                 # I1 + I2 + edges + matches
