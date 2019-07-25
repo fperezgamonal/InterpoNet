@@ -95,11 +95,6 @@ def test_one_image(args):
             # tmp_img2_fname = 'tmp_interponet/img2_padded.png'
             # sk.io.imsave(tmp_img1_fname, img1)
             # sk.io.imsave(tmp_img2_fname, img2)
-
-            print("Variational post Processing...")
-            utils.calc_variational_inference_map(args.img1_filename, args.img2_filename,
-                                                 'tmp_interponet/out_no_var.flo', args.out_filename, 'sintel')
-
             parent_folder_name = 'interponet_one_inference_{}'.format(os.path.basename(args.img1_filename)[:-4]) if \
                 args.new_par_folder is None else args.new_par_folder
             unique_name = os.path.basename(args.img1_filename)[:-4]
@@ -107,6 +102,11 @@ def test_one_image(args):
                 os.makedirs(parent_folder_name)
 
             out_flo_path = os.path.join(parent_folder_name, unique_name + '_flow.flo')
+
+            print("Variational post Processing...")
+            utils.calc_variational_inference_map(args.img1_filename, args.img2_filename,
+                                                 'tmp_interponet/out_no_var.flo', out_flo_path, 'sintel')
+
             # Read outputted flow to compute metrics
             pred_flow = io_utils.read_flow(out_flo_path)
             # Crop to original file (if needed)
