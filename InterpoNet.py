@@ -25,10 +25,10 @@ def get_padded_image_size(og_height, og_width, divisor=64):
 
 def test_one_image(args):
     # Get padded dimensions
-    height, width = get_padded_image_size(og_height=args.img_height, og_width=args.img_width, divisor=args.downscale)
-    # Get final dimensions after downsampling
-    height_downsample = int(height / args.downscale)
-    width_downsample = int(width / args.downscale)
+    # height, width = get_padded_image_size(og_height=args.img_height, og_width=args.img_width, divisor=args.downscale)
+    # # Get final dimensions after downsampling
+    # height_downsample = int(height / args.downscale)
+    # width_downsample = int(width / args.downscale)
 
     # Load edges file
     print("Loading files...")
@@ -60,11 +60,11 @@ def test_one_image(args):
     with tf.device('/gpu:0'):
         with tf.Graph().as_default():
 
-            sparse_flow_ph = tf.placeholder(tf.float32, shape=(None, height_downsample, width_downsample, 2),
+            sparse_flow_ph = tf.placeholder(tf.float32, shape=(None, sparse_flow.shape[0], sparse_flow.shape[1], 2),
                                             name='sparse_flow_ph')
-            matches_mask_ph = tf.placeholder(tf.float32, shape=(None, height_downsample, width_downsample, 1),
+            matches_mask_ph = tf.placeholder(tf.float32, shape=(None, sparse_flow.shape[0], sparse_flow.shape[1], 1),
                                              name='matches_mask_ph')
-            edges_ph = tf.placeholder(tf.float32, shape=(None, height_downsample, width_downsample, 1),
+            edges_ph = tf.placeholder(tf.float32, shape=(None, sparse_flow.shape[0], sparse_flow.shape[1], 1),
                                       name='edges_ph')
 
             forward_model = model.getNetwork(sparse_flow_ph, matches_mask_ph, edges_ph, reuse=False)
