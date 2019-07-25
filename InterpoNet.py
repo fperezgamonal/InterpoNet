@@ -8,6 +8,7 @@ import argparse
 import os
 import datetime
 from math import ceil
+import shutil
 
 
 # auxiliar function to compute the new image size (for test only) for input images which are not divisble by divisor
@@ -87,6 +88,9 @@ def test_one_image(args):
             utils.calc_variational_inference_map(args.img1_filename, args.img2_filename,
                                                  'tmp_interponet/out_no_var.flo', args.out_filename, 'sintel')
 
+            # Remove temporal directory and everything in it
+            shutil.rmtree('tmp_interponet')
+
 
 def test_batch(args):
     # TODO: how should we pad the edges file? If once read is a binary image, pad normally, otherwise?
@@ -99,11 +103,13 @@ def test_batch(args):
     width_downsample = int(width / args.downscale)
 
     # Allocate network w. placeholders (once)
-    image_ph = tf.placeholder(tf.float32, shape=(None, height_downsample, width_downsample, 2), name='image_ph')
-    mask_ph = tf.placeholder(tf.float32, shape=(None, height_downsample, width_downsample, 1), name='mask_ph')
+    sparse_flow_ph = tf.placeholder(tf.float32, shape=(None, height_downsample, width_downsample, 2),
+                                    name='sparse_flow_ph')
+    mask_matches_ph = tf.placeholder(tf.float32, shape=(None, height_downsample, width_downsample, 1),
+                                     name='mask_matches_ph')
     edges_ph = tf.placeholder(tf.float32, shape=(None, height_downsample, width_downsample, 1), name='edges_ph')
 
-    forward_model = model.getNetwork(image_ph, mask_ph, edges_ph, reuse=False)
+    forward_model = model.getNetwork(sparse_flow_ph, mask_matches_ph, edges_ph, reuse=False)
 
     saver_keep = tf.train.Saver(tf.all_variables(), max_to_keep=0)
 
@@ -198,8 +204,9 @@ def test_batch(args):
                         # downscale ba
                         sparse_flow_ba, mask_matches_ba, _ = utils.downscale_all(sparse_flow_ba, mask_matches_ba, None,
                                                                                  args.downscale)
-                        sparse_flow, mask_matches = utils.create_mean_map_ab_ba(sparse_flow, mask_matches, sparse_flow_ba,
-                                                                mask_matches_ba, args.downscale)
+                        sparse_flow, mask_matches = utils.create_mean_map_ab_ba(sparse_flow, mask_matches,
+                                                                                sparse_flow_ba, mask_matches_ba,
+                                                                                args.downscale)
                         if args.compute_metrics:
                             print("Last input file is a path to a ground truth flow")
                             gt_flow = io_utils.read_flow(path_inputs[5])
@@ -301,10 +308,10 @@ def test_batch(args):
                 with tf.device('/gpu:0'):
                     with tf.Graph().as_default():
                         prediction = sess.run(forward_model, feed_dict={
-                            image_ph: np.expand_dims(sparse_flow, axis=0),
-                            mask_ph: np.reshape(mask_matches, [1, mask_matches.shape[0], mask_matches.shape[1], 1]),
-                            edges_ph: np.expand_dims(
-                                np.expand_dims(edges, axis=0), axis=3),
+                            sparse_flow_ph: np.expand_dims(sparse_flow, axis=0),
+                            mask_matches_ph: np.reshape(mask_matches, [1, mask_matches.shape[0],
+                                                                       mask_matches.shape[1], 1]),
+                            edges_ph: np.expand_dims(np.expand_dims(edges, axis=0), axis=3),
                         })
                         # Upscale prediction
                         upscaled_pred = sk.transform.resize(prediction[0], [height, width, 2],
@@ -366,6 +373,9 @@ def test_batch(args):
                                 logfile.write(final_str_formated)
                             else:  # print to stdout
                                 print(final_str_formated)
+
+            # Remove temporal directory and everything in it
+            shutil.rmtree('tmp_interponet')
 
 
 if __name__ == '__main__':
