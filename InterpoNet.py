@@ -29,6 +29,8 @@ def test_one_image(args):
     # Load matching file
     sparse_flow, mask_matches = io_utils.load_matching_file(args.matches_filename, width=args.img_width,
                                                             height=args.img_height)
+    sparse_flow_img = utils.flow_to_image(sparse_flow)
+    sk.io.imsave('tmp_sparse_flow_ogscale.png', sparse_flow_img)
 
     # downscale
     print("Downscaling...")
@@ -37,6 +39,8 @@ def test_one_image(args):
     if args.ba_matches_filename is not None:
         sparse_flow_ba, mask_matches_ba = io_utils.load_matching_file(args.ba_matches_filename, width=args.img_width,
                                                                       height=args.img_height)
+        sparse_flow_img = utils.flow_to_image(sparse_flow_ba)
+        sk.io.imsave('tmp_sparse_flow_ogscale_bwd.png', sparse_flow_img)
 
         # downscale ba
         sparse_flow_ba, mask_matches_ba, _ = utils.downscale_all(sparse_flow_ba, mask_matches_ba, None, args.downscale)
@@ -44,9 +48,8 @@ def test_one_image(args):
                                                                 mask_matches_ba, args.downscale)
 
     sparse_flow_img = utils.flow_to_image(sparse_flow)
-    sk.io.imsave('tmp_sparse_flow.png', sparse_flow_img)
+    sk.io.imsave('tmp_sparse_flow_downscaled.png', sparse_flow_img)
 
-    print("Dims after downscaling: sparse_flow.shape={}".format(sparse_flow.shape))
     with tf.device('/gpu:0'):
         with tf.Graph().as_default():
 
