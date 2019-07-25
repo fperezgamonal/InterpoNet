@@ -398,14 +398,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Interponet inference (image or filelist)')
     parser.add_argument('--img1_filename', type=str, help='First image filename in the image pair (or path to txt file'
                                                           ' with all the paths',
-                        default='example/frame_0001.png')
+                        default=None)
     parser.add_argument('--img2_filename', type=str, help='Second image filename in the image pair',
-                        default='example/frame_0002.png')
+                        default=None)
     parser.add_argument('--edges_filename', type=str, help='Edges filename', default='example/frame_0001.dat')
     parser.add_argument('--matches_filename', type=str, help='Sparse matches filename',
-                        default='example/frame_0001.txt')
+                        default=None)
     parser.add_argument('--out_filename', type=str, help='Flow output filename (or path if .txt file is passed)',
-                        default='example/')
+                        default=None)
 
     parser.add_argument('--model_filename', type=str, help='Saved model parameters filename')
     parser.add_argument('--ba_matches_filename', type=str,
@@ -451,6 +451,16 @@ if __name__ == '__main__':
             arguments.downscale = 8
         if arguments.model_filename is None:
             arguments.model_filename = 'models/ff_sintel.ckpt'
+    if arguments.img1_filename or arguments.img2_filename or arguments.edges_filename or arguments.matches_filename:
+        # Use default
+        print("Missing some required argument (img1, img2, edges or matches)")
+        print("Will be using default testing image 'examples/frame_0001.png'")
+        arguments.img1_filename = 'examples/frame_0001.png'
+        arguments.img2_filename = 'examples/frame_0002.png'
+        arguments.edges_filename = 'examples/frame_0001.dat'
+        arguments.matches_filename = 'examples/frame_0001.txt'
+        arguments.ba_matches_filename = 'examples_frame_0001_BA.txt'
+        arguments.out_dirname = 'results'
 
     if os.path.basename(arguments.img1_filename).lower()[-3:] == 'txt':
         print("Testing all images from user-provided text file: '{}'".format(arguments.img1_filename))
