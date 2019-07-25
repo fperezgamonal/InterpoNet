@@ -451,7 +451,9 @@ if __name__ == '__main__':
             arguments.downscale = 8
         if arguments.model_filename is None:
             arguments.model_filename = 'models/ff_sintel.ckpt'
-    if arguments.img1_filename or arguments.img2_filename or arguments.edges_filename or arguments.matches_filename:
+
+    if arguments.img1_filename is None or arguments.img2_filename is None or arguments.edges_filename is None or \
+            arguments.matches_filename is None:
         # Use default
         print("Missing some required argument (img1, img2, edges or matches)")
         print("Will be using default testing image 'examples/frame_0001.png'")
