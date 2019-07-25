@@ -100,7 +100,7 @@ def test_one_image(args):
             utils.calc_variational_inference_map(args.img1_filename, args.img2_filename,
                                                  'tmp_interponet/out_no_var.flo', args.out_filename, 'sintel')
 
-            parent_folder_name = 'interponet_one_inference_{}'.format(os.path.basename(args.img1_filename)) if \
+            parent_folder_name = 'interponet_one_inference_{}'.format(os.path.basename(args.img1_filename)[:-4]) if \
                 args.new_par_folder is None else args.new_par_folder
             unique_name = os.path.basename(args.img1_filename)[:-4]
 
