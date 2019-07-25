@@ -43,6 +43,9 @@ def test_one_image(args):
         sparse_flow, mask_matches = utils.create_mean_map_ab_ba(sparse_flow, mask_matches, sparse_flow_ba,
                                                                 mask_matches_ba, args.downscale)
 
+    sparse_flow_img = utils.flow_to_image(sparse_flow)
+    sk.io.imsave('tmp_sparse_flow.png', sparse_flow_img)
+
     print("Dims after downscaling: sparse_flow.shape={}".format(sparse_flow.shape))
     with tf.device('/gpu:0'):
         with tf.Graph().as_default():
