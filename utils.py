@@ -10,33 +10,35 @@ LARGEFLOW = 1e8
 DEBUG = False  # flag to print out verbose information like: range of optical flow, dimensions of matrix, etc.
 
 
-def downscale_all(img, mask, edges, downscale):
+def downscale_all(sparse_flow, mask, edges, downscale):
     """
     Downscales all the inputs by a given scale.
-    :param img: A sparse  flow map - h x w x 2
+    :param sparse_flow: A sparse  flow map - h x w x 2
     :param mask: A binary mask  - h x w x 1
     :param edges:An edges map  - h x w x 1
     :param downscale: Downscaling factor.
     :return: the downscaled versions of the inputs
     """
-    img[:, :, 0][mask == -1] = np.nan
-    img[:, :, 1][mask == -1] = np.nan
+    sparse_flow[:, :, 0][mask == -1] = np.nan
+    sparse_flow[:, :, 1][mask == -1] = np.nan
 
-    img = img[:(img.shape[0] - (img.shape[0] % downscale)), :(img.shape[1] - (img.shape[1] % downscale)), :]
+    sparse_flow = sparse_flow[:(sparse_flow.shape[0] - (sparse_flow.shape[0] % downscale)), :(sparse_flow.shape[1] -
+                                                                                              (sparse_flow.shape[1] %
+                                                                                               downscale)), :]
 
-    blocks = view_as_blocks(img, (downscale, downscale, 2))
-    img = np.nanmean(blocks, axis=(-2, -3, -4))
+    blocks = view_as_blocks(sparse_flow, (downscale, downscale, 2))
+    sparse_flow = np.nanmean(blocks, axis=(-2, -3, -4))
 
-    mask = np.ones_like(img)
-    mask[np.isnan(img)] = -1
+    mask = np.ones_like(sparse_flow)
+    mask[np.isnan(sparse_flow)] = -1
     mask = mask[:, :, 0]
-    img[np.isnan(img)] = 0
+    sparse_flow[np.isnan(sparse_flow)] = 0
 
     if edges is not None:
         edges = edges[:(edges.shape[0] - (edges.shape[0] % downscale)), :(edges.shape[1] - (edges.shape[1] % downscale))]
         edges = rescale(edges, 1 / float(downscale), preserve_range=True)
 
-    return img, mask, edges
+    return sparse_flow, mask, edges
 
 
 def inverse_of_map(of_map, of_mask, scale):

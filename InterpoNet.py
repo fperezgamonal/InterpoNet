@@ -52,10 +52,11 @@ def test_one_image(args):
                                                                 mask_matches_ba, args.downscale)
 
     # Pad images if they are not divisible by the downscale factor
-    img1 = sk.io.imread(args.img1_filename)
-    img2 = sk.io.imread(args.img2_filename)
-    img1, img2, edges, mask_matches, sparse_flow, x_info = utils.adapt_x(img1, img2, edges, mask_matches,
-                                                                         sparse_flow)
+    # img1 = sk.io.imread(args.img1_filename)
+    # img2 = sk.io.imread(args.img2_filename)
+    # img1, img2, edges, mask_matches, sparse_flow, x_info = utils.adapt_x(img1, img2, edges, mask_matches,
+    #                                                                      sparse_flow)
+    print("sparse_flow.shape: {}, mask_matches.shape: {}")
     with tf.device('/gpu:0'):
         with tf.Graph().as_default():
 
@@ -81,7 +82,7 @@ def test_one_image(args):
                 edges_ph: np.expand_dims(np.expand_dims(edges, axis=0), axis=3),
             })
             print("Upscaling...")
-            upscaled_pred = sk.transform.resize(prediction[0], [height, width, 2],
+            upscaled_pred = sk.transform.resize(prediction[0], [args.img_width, args.img_height, 2],
                                                 preserve_range=True, order=3)
 
             if not os.path.isdir('tmp_interponet'):
@@ -90,13 +91,13 @@ def test_one_image(args):
 
             # calc_variational_inference_map reads img1 and img2 from the filename directly, must save
             # padded versions
-            tmp_img1_fname = 'tmp_interponet/img1_padded.png'
-            tmp_img2_fname = 'tmp_interponet/img2_padded.png'
-            sk.io.imsave(tmp_img1_fname, img1)
-            sk.io.imsave(tmp_img2_fname, img2)
+            # tmp_img1_fname = 'tmp_interponet/img1_padded.png'
+            # tmp_img2_fname = 'tmp_interponet/img2_padded.png'
+            # sk.io.imsave(tmp_img1_fname, img1)
+            # sk.io.imsave(tmp_img2_fname, img2)
 
             print("Variational post Processing...")
-            utils.calc_variational_inference_map(tmp_img1_fname, tmp_img2_fname,
+            utils.calc_variational_inference_map(args.img1_filename, args.img2_filename,
                                                  'tmp_interponet/out_no_var.flo', args.out_filename, 'sintel')
 
             parent_folder_name = 'interponet_one_inference' if args.new_par_folder is None \
@@ -110,10 +111,10 @@ def test_one_image(args):
             # Read outputted flow to compute metrics
             pred_flow = io_utils.read_flow(out_flo_path)
             # Crop to original file (if needed)
-            pred_flow_cropped = utils.postproc_y_hat_test(pred_flow, adapt_info=x_info)
+            # pred_flow_cropped = utils.postproc_y_hat_test(pred_flow, adapt_info=x_info)
             # Save image visualization of predicted flow (Middlebury colour coding)
             if args.save_image:
-                flow_img = utils.flow_to_image(pred_flow_cropped)
+                flow_img = utils.flow_to_image(pred_flow)
                 out_path_full = os.path.join(out_path_complete, unique_name + '_viz.png')
                 sk.io.imsave(out_path_full, flow_img)
 
@@ -122,7 +123,6 @@ def test_one_image(args):
 
 
 def test_batch(args):
-    # TODO: how should we pad the edges file? If once read is a binary image, pad normally, otherwise?
     # Order: pad ==> downsample ==> upsample ==> crop
     # Compute final height and width after downsampling
     # Get padded dimensions
