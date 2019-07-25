@@ -174,9 +174,13 @@ def test_batch(args):
                 # Read + pre-process files
                 # Each line is split into a list with N elements (separator: blank space (" "))
                 path_inputs = path_list[img_idx][:-1].split(' ')  # remove \n at the end of the line!
-                assert 4 <= len(path_inputs) <= 6, (
-                    'More paths than expected. Expected: I1+I2+edges+matches(4), I1+I2+edges+matches+gtflow(5),'
-                    ' I1+I2+edges+matches+backward_matches(5) or I1+I2+edges+matches+backward_matches+gtflow(6)')
+                assert 4 <= len(path_inputs) <= 8, (
+                    "More paths than expected. Expected one of the following:\n(4) I1+I2+edges+matches\n"
+                    "(5) I1+I2+edges+matches+gt_flow\n(5) I1+I2+edges+matches+ba_matches\n"
+                    "(6) I1+I2+edges+matches+ba_matches+gt_flow\n(6) I1+I2+edges+matches+gt_flow+occ\n"
+                    "(7) I1+I2+edges+matches+ba_matches+gt_flow+occ\n"
+                    "(7) I1+I2+edges+matches+gt_flow+occ+inv\n"
+                    "(8) I1+I2+edges+matches+ba_matches+gt_flow+occ+inv\n")
                 # Common operations to all input sizes
                 # Read input frames (for variational)
                 img1_filename = path_inputs[0]
