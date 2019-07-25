@@ -84,7 +84,7 @@ def test_one_image(args):
 
             # But if out_dir is provided as a full path to output flow, keep it
             unique_name = os.path.basename(args.img1_filename)[:-4]
-            if os.path.basename(args.out_filename) is not None:
+            if args.out_filename is not None:
                 parent_folder_name = os.path.dirname(args.out_filename)
             else:
                 parent_folder_name = 'interponet_one_inference_{}'.format(os.path.basename(args.img1_filename)[:-4]) \
