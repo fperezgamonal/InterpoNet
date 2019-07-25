@@ -392,7 +392,60 @@ def test_batch(args):
                                 logfile.write(final_str_formated)
                             else:  # print to stdout
                                 print(final_str_formated)
+            # TODO: add standard deviation of all the metrics (to see variance in the set)
+            # Actually compute the average metrics (careful: need to discard NaNs and Inf)
+            if args.accumulate_metrics:
+                # Compute the final (average) mang, stdang and mepe
+                num_metrics = add_metrics.shape[-1]
+                average_metrics = np.ones(num_metrics) * np.inf
+                values_not_inf = np.zeros(num_metrics)
+                not_valid_values = np.zeros(num_metrics)
+                for i in range(num_metrics):  # indices 0 to 11
+                    not_inf = np.sum(add_metrics[:, i] != np.inf)
+                    are_nan = np.sum(np.isnan(add_metrics[:, i]))
+                    not_valid_values[i] = not_inf + are_nan
+                    log_index = np.logical_and(~np.isinf(add_metrics[:, i]), ~np.isnan(add_metrics[:, i]))
+                    values_not_inf[i] = np.sum(add_metrics[log_index, i])
+                    average_metrics[i] = values_not_inf[i] / not_valid_values[i]
 
+                # Re-scale umat metrics if some tested image had 0 pixels occluded
+                if not_occluded_count > 0:
+                    for i in range(6, 9):  # indices of 6 to 8
+                        average_metrics[i] = average_metrics[i] * (not_valid_values[i] /
+                                                                   (not_valid_values[
+                                                                       i]) - not_occluded_count)
+                # Re-scale metrics for S0-10, S10-40 and S40+ if some frames had 0 pixels within a specific
+                # displacement range.
+                if not_disp_S0_10_count > 0:
+                    average_metrics[9] = average_metrics[9] * (not_valid_values[9] /
+                                                               (not_valid_values[9] - not_disp_S0_10_count))
+                if not not_disp_S10_40_count > 0:
+                    average_metrics[10] = average_metrics[10] * (not_valid_values[10] /
+                                                                 (not_valid_values[
+                                                                      10] - not_disp_S10_40_count))
+                if not not_disp_S40plus_count > 0:
+                    average_metrics[11] = average_metrics[11] * (not_valid_values[11] /
+                                                                 (not_valid_values[
+                                                                      11] - not_disp_S40plus_count))
+
+                if args.log_metrics2file:
+                    # Make dictionary
+                    avg_metrics_dict = {'mangall': average_metrics[0], 'stdangall': average_metrics[1],
+                                        'EPEall': average_metrics[2], 'mangmat': average_metrics[3],
+                                        'stdangmat': average_metrics[4], 'EPEmat': average_metrics[5],
+                                        'mangumat': average_metrics[6], 'stdangumat': average_metrics[7],
+                                        'EPEumat': average_metrics[8], 'S0-10': average_metrics[9],
+                                        'S10-40': average_metrics[10], 'S40plus': average_metrics[11]}
+                    final_str_formated_avg = utils.get_metrics(avg_metrics_dict, average=True)
+                    now = datetime.datetime.now()
+                    date_now = now.strftime('%d-%m-%y_%H-%M-%S')
+                    notice_str = '\n\nToday is: {}\nNow logging final averaged metrics \n\n'.format(
+                        date_now)
+                    logfile.write(notice_str)
+                    logfile.write(final_str_formated_avg)
+
+            if args.log_metrics2file:
+                logfile.close()
             # Remove temporal directory and everything in it
             shutil.rmtree('tmp_interponet')
 
