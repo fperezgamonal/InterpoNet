@@ -82,7 +82,7 @@ def test_one_image(args):
                 edges_ph: np.expand_dims(np.expand_dims(edges, axis=0), axis=3),
             })
             print("Upscaling...")
-            upscaled_pred = sk.transform.resize(prediction[0], [args.img_width, args.img_height, 2],
+            upscaled_pred = sk.transform.resize(prediction[0], [args.img_height, args.img_width, 2],
                                                 preserve_range=True, order=3)
 
             if not os.path.isdir('tmp_interponet'):
