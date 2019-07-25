@@ -7,19 +7,17 @@ import model
 import argparse
 import os
 import datetime
-from math import ceil
 import shutil
 
 
+# TODO: maybe for a more fair comparison, use padding with zeros like we do with flownetS
 # auxiliar function to compute the new image size (for test only) for input images which are not divisble by divisor
-def get_padded_image_size(og_height, og_width, divisor=64):
-    if og_height % divisor != 0 or og_width % divisor != 0:
-        new_height = int(ceil(og_height / divisor) * divisor)
-        new_width = int(ceil(og_width / divisor) * divisor)
-    else:
-        # New image size is equal to original one
-        new_height = og_height
-        new_width = og_width
+# Important note: the authors slightly crop the content by a few pixels if the size is not divisible by the downscale
+# factor. Padding with zeros and then cropping back to the original content may be better to avoid interpolation
+# artifacts at the borders
+def get_downsampled_image_size(og_height, og_width, downscale_factor=8):
+    new_height = (og_height - (og_height % downscale_factor)) / downscale_factor
+    new_width = (og_width - (og_width % downscale_factor)) / downscale_factor
     return new_height, new_width
 
 
@@ -114,15 +112,10 @@ def test_one_image(args):
 
 
 def test_batch(args):
-    # Read first matches file to define height, width after downsampling (a little redundant but we do not have exactly
-    #
-    # Order: pad ==> downsample ==> upsample ==> crop
-    # Compute final height and width after downsampling
-    # Get padded dimensions
-    height, width = get_padded_image_size(og_height=args.img_height, og_width=args.img_width, divisor=args.downscale)
-    # Get final dimensions after downsampling
-    height_downsample = int(height / args.downscale)
-    width_downsample = int(width / args.downscale)
+    # Height, width after downsampling (original scheme slightly crops sparse flow, edges + matches mask)
+    # See 'downscale_all' for more details
+    height_downsample, width_downsample = get_downsampled_image_size(og_height=args.img_height, og_width=args.img_width,
+                                                                     downscale_factor=args.downscale)
 
     # Allocate network w. placeholders (once)
     sparse_flow_ph = tf.placeholder(tf.float32, shape=(None, height_downsample, width_downsample, 2),
@@ -176,8 +169,8 @@ def test_batch(args):
                     ' I1+I2+edges+matches+backward_matches(5) or I1+I2+edges+matches+backward_matches+gtflow(6)')
                 # Common operations to all input sizes
                 # Read input frames (for variational)
-                img1 = sk.io.imread(path_inputs[0])
-                img2 = sk.io.imread(path_inputs[1])
+                img1_filename = path_inputs[0]
+                img2_filename = path_inputs[1]
                 edges_fname = path_inputs[2]
                 matches_fname = path_inputs[3]
                 # Important: read and THEN pad if needed
@@ -358,7 +351,7 @@ def test_batch(args):
                         # sk.io.imsave(tmp_img2_fname, img2)
 
                         # Variational post Processing
-                        utils.calc_variational_inference_map(args.img1_filename, args.img2_filename,
+                        utils.calc_variational_inference_map(img1_filename, img2_filename,
                                                              'tmp_interponet/out_no_var.flo', out_flo_path, 'sintel')
 
                         # Read outputted flow to compute metrics
