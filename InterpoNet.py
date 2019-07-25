@@ -29,30 +29,30 @@ def test_one_image(args):
     # Load matching file
     sparse_flow, mask_matches = io_utils.load_matching_file(args.matches_filename, width=args.img_width,
                                                             height=args.img_height)
-    sparse_flow_img = utils.flow_to_image(sparse_flow)
-    sk.io.imsave('tmp_sparse_flow_ogscale.png', sparse_flow_img)
+    # sparse_flow_img = utils.flow_to_image(sparse_flow)
+    # sk.io.imsave('tmp_sparse_flow_ogscale.png', sparse_flow_img)
 
     # downscale
     print("Downscaling...")
     sparse_flow, mask_matches, edges = utils.downscale_all(sparse_flow, mask_matches, edges, args.downscale)
-    sparse_flow_img = utils.flow_to_image(sparse_flow)
-    sk.io.imsave('tmp_sparse_flow_ogscale_fwd.png', sparse_flow_img)
+    # sparse_flow_img = utils.flow_to_image(sparse_flow)
+    # sk.io.imsave('tmp_sparse_flow_ogscale_fwd.png', sparse_flow_img)
 
     if args.ba_matches_filename is not None:
         sparse_flow_ba, mask_matches_ba = io_utils.load_matching_file(args.ba_matches_filename, width=args.img_width,
                                                                       height=args.img_height)
-        sparse_flow_img = utils.flow_to_image(sparse_flow_ba)
-        sk.io.imsave('tmp_sparse_flow_ogscale_bwd.png', sparse_flow_img)
+        # sparse_flow_img = utils.flow_to_image(sparse_flow_ba)
+        # sk.io.imsave('tmp_sparse_flow_ogscale_bwd.png', sparse_flow_img)
 
         # downscale ba
         sparse_flow_ba, mask_matches_ba, _ = utils.downscale_all(sparse_flow_ba, mask_matches_ba, None, args.downscale)
         sparse_flow, mask_matches = utils.create_mean_map_ab_ba(sparse_flow, mask_matches, sparse_flow_ba,
                                                                 mask_matches_ba, args.downscale)
-        sparse_flow_img = utils.flow_to_image(sparse_flow_ba)
-        sk.io.imsave('tmp_sparse_flow_downscaled_bwd.png', sparse_flow_img)
-
-    sparse_flow_img = utils.flow_to_image(sparse_flow)
-    sk.io.imsave('tmp_sparse_flow_downscaled_mixed.png', sparse_flow_img)
+    #     sparse_flow_img = utils.flow_to_image(sparse_flow_ba)
+    #     sk.io.imsave('tmp_sparse_flow_downscaled_bwd.png', sparse_flow_img)
+    #
+    # sparse_flow_img = utils.flow_to_image(sparse_flow)
+    # sk.io.imsave('tmp_sparse_flow_downscaled_mixed.png', sparse_flow_img)
 
     with tf.device('/gpu:0'):
         with tf.Graph().as_default():
@@ -456,21 +456,20 @@ if __name__ == '__main__':
         if arguments.model_filename is None:
             arguments.model_filename = 'models/ff_sintel.ckpt'
 
-    if arguments.img1_filename is None or arguments.img2_filename is None or arguments.edges_filename is None or \
-            arguments.matches_filename is None:
-        # Use default
-        print("Missing some required argument (img1, img2, edges or matches)")
-        print("Will be using default testing image 'examples/frame_0001.png'")
-        arguments.img1_filename = 'examples/frame_0001.png'
-        arguments.img2_filename = 'examples/frame_0002.png'
-        arguments.edges_filename = 'examples/frame_0001.dat'
-        arguments.matches_filename = 'examples/frame_0001.txt'
-        arguments.ba_matches_filename = 'examples_frame_0001_BA.txt'
-        arguments.out_dirname = 'results'
-
     if os.path.basename(arguments.img1_filename).lower()[-3:] == 'txt':
         print("Testing all images from user-provided text file: '{}'".format(arguments.img1_filename))
         test_batch(arguments)
     else:
+        if arguments.img1_filename is None or arguments.img2_filename is None or arguments.edges_filename is None or \
+                arguments.matches_filename is None:
+            # Use default
+            print("Missing some required argument (img1, img2, edges or matches)")
+            print("Will be using default testing image 'examples/frame_0001.png'")
+            arguments.img1_filename = 'examples/frame_0001.png'
+            arguments.img2_filename = 'examples/frame_0002.png'
+            arguments.edges_filename = 'examples/frame_0001.dat'
+            arguments.matches_filename = 'examples/frame_0001.txt'
+            arguments.ba_matches_filename = 'examples_frame_0001_BA.txt'
+            arguments.out_dirname = 'results'
         print("Testing one single image with name: '{}'".format(arguments.img1_filename))
         test_one_image(arguments)
