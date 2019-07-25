@@ -24,12 +24,6 @@ def get_padded_image_size(og_height, og_width, divisor=64):
 
 
 def test_one_image(args):
-    # Get padded dimensions
-    # height, width = get_padded_image_size(og_height=args.img_height, og_width=args.img_width, divisor=args.downscale)
-    # # Get final dimensions after downsampling
-    # height_downsample = int(height / args.downscale)
-    # width_downsample = int(width / args.downscale)
-
     # Load edges file
     print("Loading files...")
     edges = io_utils.load_edges_file(args.edges_filename, width=args.img_width, height=args.img_height)
@@ -51,12 +45,7 @@ def test_one_image(args):
         sparse_flow, mask_matches = utils.create_mean_map_ab_ba(sparse_flow, mask_matches, sparse_flow_ba,
                                                                 mask_matches_ba, args.downscale)
 
-    # Pad images if they are not divisible by the downscale factor
-    # img1 = sk.io.imread(args.img1_filename)
-    # img2 = sk.io.imread(args.img2_filename)
-    # img1, img2, edges, mask_matches, sparse_flow, x_info = utils.adapt_x(img1, img2, edges, mask_matches,
-    #                                                                      sparse_flow)
-    print("sparse_flow.shape: {}, mask_matches.shape: {}")
+    print("Dims after downscaling: sparse_flow.shape={}".format(sparse_flow.shape))
     with tf.device('/gpu:0'):
         with tf.Graph().as_default():
 
@@ -89,18 +78,15 @@ def test_one_image(args):
                 os.makedirs('tmp_interponet')
             io_utils.save_flow2file(upscaled_pred, filename='tmp_interponet/out_no_var.flo')
 
-            # calc_variational_inference_map reads img1 and img2 from the filename directly, must save
-            # padded versions
-            # tmp_img1_fname = 'tmp_interponet/img1_padded.png'
-            # tmp_img2_fname = 'tmp_interponet/img2_padded.png'
-            # sk.io.imsave(tmp_img1_fname, img1)
-            # sk.io.imsave(tmp_img2_fname, img2)
-            parent_folder_name = 'interponet_one_inference_{}'.format(os.path.basename(args.img1_filename)[:-4]) if \
-                args.new_par_folder is None else args.new_par_folder
+            # But if out_dir is provided as a full path to output flow, keep it
             unique_name = os.path.basename(args.img1_filename)[:-4]
-            if not os.path.isdir(parent_folder_name):
-                os.makedirs(parent_folder_name)
-
+            if os.path.basename(args.out_filename) is not None:
+                parent_folder_name = os.path.dirname(args.out_filename)
+            else:
+                parent_folder_name = 'interponet_one_inference_{}'.format(os.path.basename(args.img1_filename)[:-4]) \
+                    if args.new_par_folder is None else args.new_par_folder
+                if not os.path.isdir(parent_folder_name):
+                    os.makedirs(parent_folder_name)
             out_flo_path = os.path.join(parent_folder_name, unique_name + '_flow.flo')
 
             print("Variational post Processing...")
@@ -109,19 +95,27 @@ def test_one_image(args):
 
             # Read outputted flow to compute metrics
             pred_flow = io_utils.read_flow(out_flo_path)
-            # Crop to original file (if needed)
-            # pred_flow_cropped = utils.postproc_y_hat_test(pred_flow, adapt_info=x_info)
+
             # Save image visualization of predicted flow (Middlebury colour coding)
             if args.save_image:
                 flow_img = utils.flow_to_image(pred_flow)
                 out_path_full = os.path.join(parent_folder_name, unique_name + '_viz.png')
                 sk.io.imsave(out_path_full, flow_img)
 
+            # Compute metrics
+            if args.compute_metrics and args.gt_flow is not None:
+                metrics = utils.compute_all_metrics(pred_flow, args.gt_flow, occ_mask=args.occ_mask,
+                                                    inv_mask=args.inv_mask)
+                metrics_str = utils.get_metrics(metrics, flow_fname=unique_name)
+                print(metrics_str)  # print to stdout (use test_batch to log several images' error metrics to file)
+
             # Remove temporal directory and everything in it
             shutil.rmtree('tmp_interponet')
 
 
 def test_batch(args):
+    # Read first matches file to define height, width after downsampling (a little redundant but we do not have exactly
+    #
     # Order: pad ==> downsample ==> upsample ==> crop
     # Compute final height and width after downsampling
     # Get padded dimensions
@@ -326,9 +320,9 @@ def test_batch(args):
                                      "(7) I1+I2+edges+matches+ba_matches+gt_flow+occ, "
                                      "(7) I1+I2+edges+matches+gt_flow+occ+inv or "
                                      "(8) I1+I2+edges+matches+ba_matches+gt_flow+occ+inv")
-                # Pad images if they are not divisible by the downscale factor
-                img1, img2, edges, mask_matches, sparse_flow, x_info = utils.adapt_x(img1, img2, edges, mask_matches,
-                                                                                     sparse_flow)
+                # # Pad images if they are not divisible by the downscale factor
+                # img1, img2, edges, mask_matches, sparse_flow, x_info = utils.adapt_x(img1, img2, edges, mask_matches,
+                #                                                                      sparse_flow)
 
                 # Compute OF and run variational post-processing
                 with tf.device('/gpu:0'):
@@ -340,7 +334,7 @@ def test_batch(args):
                             edges_ph: np.expand_dims(np.expand_dims(edges, axis=0), axis=3),
                         })
                         # Upscale prediction
-                        upscaled_pred = sk.transform.resize(prediction[0], [height, width, 2],
+                        upscaled_pred = sk.transform.resize(prediction[0], [args.img_height, args.img_width, 2],
                                                             preserve_range=True, order=3)
 
                         if not os.path.isdir('tmp_interponet'):
@@ -358,29 +352,29 @@ def test_batch(args):
 
                         # calc_variational_inference_map reads img1 and img2 from the filename directly, must save
                         # padded versions
-                        tmp_img1_fname = 'tmp_interponet/img1_padded.png'
-                        tmp_img2_fname = 'tmp_interponet/img2_padded.png'
-                        sk.io.imsave(tmp_img1_fname, img1)
-                        sk.io.imsave(tmp_img2_fname, img2)
+                        # tmp_img1_fname = 'tmp_interponet/img1_padded.png'
+                        # tmp_img2_fname = 'tmp_interponet/img2_padded.png'
+                        # sk.io.imsave(tmp_img1_fname, img1)
+                        # sk.io.imsave(tmp_img2_fname, img2)
 
                         # Variational post Processing
-                        utils.calc_variational_inference_map(tmp_img1_fname, tmp_img2_fname,
+                        utils.calc_variational_inference_map(args.img1_filename, args.img2_filename,
                                                              'tmp_interponet/out_no_var.flo', out_flo_path, 'sintel')
 
                         # Read outputted flow to compute metrics
                         pred_flow = io_utils.read_flow(out_flo_path)
                         # Crop to original file (if needed)
-                        pred_flow_cropped = utils.postproc_y_hat_test(pred_flow, adapt_info=x_info)
+                        # pred_flow_cropped = utils.postproc_y_hat_test(pred_flow, adapt_info=x_info)
                         # Save image visualization of predicted flow (Middlebury colour coding)
                         if args.save_image:
-                            flow_img = utils.flow_to_image(pred_flow_cropped)
+                            flow_img = utils.flow_to_image(pred_flow)
                             out_path_full = os.path.join(out_path_complete, unique_name + '_viz.png')
                             sk.io.imsave(out_path_full, flow_img)
 
                         if args.compute_metrics and args.gt_flow is not None:
                             # Compute all metrics
                             metrics, not_occluded, not_disp_s010, not_disp_s1040, not_disp_s40plus = \
-                                utils.compute_all_metrics(pred_flow_cropped, gt_flow, occ_mask=occ_mask,
+                                utils.compute_all_metrics(pred_flow, gt_flow, occ_mask=occ_mask,
                                                           inv_mask=inv_mask)
                             final_str_formated = utils.get_metrics(metrics, flow_fname=unique_name)
                             if args.accumulate_metrics:
@@ -446,14 +440,14 @@ if __name__ == '__main__':
                                                                         ' predicted flow or not', default=True,)
     parser.add_argument('--gt_flow', type=str, required=False,
                         help='Path to ground truth flow so we can compute error metrics',
-                        default='data/samples/sintel/frame_00186.flo',)
+                        default=None,)
     parser.add_argument('--occ_mask', type=str, required=False,
                         help='Path to occlusions mask (1s indicate pixel is occluded, 0 otherwise)',
-                        default='data/samples/sintel/frame_00186_occ_mask.png',)
+                        default=None,)
     parser.add_argument('--inv_mask', type=str, required=False,
                         help='Path to invalid mask with pixels that should not be considered when computing metrics = '
                              '1(invalid flow)',
-                        default='data/samples/sintel/frame_00186_inv_mask.png',)
+                        default=None,)
     arguments = parser.parse_args()
 
     if arguments.sintel:
