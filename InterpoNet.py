@@ -364,7 +364,7 @@ def test_batch(args):
                             out_path_full = os.path.join(out_path_complete, unique_name + '_viz.png')
                             sk.io.imsave(out_path_full, flow_img)
 
-                        if args.compute_metrics and args.gt_flow is not None:
+                        if args.compute_metrics and gt_flow is not None:
                             # Compute all metrics
                             metrics, not_occluded, not_disp_s010, not_disp_s1040, not_disp_s40plus = \
                                 utils.compute_all_metrics(pred_flow, gt_flow, occ_mask=occ_mask,
