@@ -103,6 +103,8 @@ def test_one_image(args):
             parent_folder_name = 'interponet_one_inference_{}'.format(os.path.basename(args.img1_filename)[:-4]) if \
                 args.new_par_folder is None else args.new_par_folder
             unique_name = os.path.basename(args.img1_filename)[:-4]
+            if not os.path.isdir(parent_folder_name):
+                os.makedirs(parent_folder_name)
 
             out_flo_path = os.path.join(parent_folder_name, unique_name + '_flow.flo')
             # Read outputted flow to compute metrics
