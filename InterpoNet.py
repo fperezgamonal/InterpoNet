@@ -100,14 +100,11 @@ def test_one_image(args):
             utils.calc_variational_inference_map(args.img1_filename, args.img2_filename,
                                                  'tmp_interponet/out_no_var.flo', args.out_filename, 'sintel')
 
-            parent_folder_name = 'interponet_one_inference' if args.new_par_folder is None \
-                else args.new_par_folder
+            parent_folder_name = 'interponet_one_inference_{}'.format(os.path.basename(args.img1_filename)) if \
+                args.new_par_folder is None else args.new_par_folder
             unique_name = os.path.basename(args.img1_filename)[:-4]
-            out_path_complete = os.path.join(args.out_filename, parent_folder_name)
-            if not os.path.isdir(out_path_complete):
-                os.makedirs(out_path_complete)
 
-            out_flo_path = os.path.join(out_path_complete, unique_name + '_flow.flo')
+            out_flo_path = os.path.join(parent_folder_name, unique_name + '_flow.flo')
             # Read outputted flow to compute metrics
             pred_flow = io_utils.read_flow(out_flo_path)
             # Crop to original file (if needed)
@@ -115,7 +112,7 @@ def test_one_image(args):
             # Save image visualization of predicted flow (Middlebury colour coding)
             if args.save_image:
                 flow_img = utils.flow_to_image(pred_flow)
-                out_path_full = os.path.join(out_path_complete, unique_name + '_viz.png')
+                out_path_full = os.path.join(parent_folder_name, unique_name + '_viz.png')
                 sk.io.imsave(out_path_full, flow_img)
 
             # Remove temporal directory and everything in it
