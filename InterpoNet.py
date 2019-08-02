@@ -8,6 +8,7 @@ import argparse
 import os
 import datetime
 import shutil
+from imageio import imsave, imread
 
 
 # TODO: maybe for a more fair comparison, use padding with zeros like we do with flownetS
@@ -30,29 +31,29 @@ def test_one_image(args):
     sparse_flow, mask_matches = io_utils.load_matching_file(args.matches_filename, width=args.img_width,
                                                             height=args.img_height)
     # sparse_flow_img = utils.flow_to_image(sparse_flow)
-    # sk.io.imsave('tmp_sparse_flow_ogscale.png', sparse_flow_img)
+    # imsave('tmp_sparse_flow_ogscale.png', sparse_flow_img)
 
     # downscale
     print("Downscaling...")
     sparse_flow, mask_matches, edges = utils.downscale_all(sparse_flow, mask_matches, edges, args.downscale)
     # sparse_flow_img = utils.flow_to_image(sparse_flow)
-    # sk.io.imsave('tmp_sparse_flow_ogscale_fwd.png', sparse_flow_img)
+    # imsave('tmp_sparse_flow_ogscale_fwd.png', sparse_flow_img)
 
     if args.ba_matches_filename is not None:
         sparse_flow_ba, mask_matches_ba = io_utils.load_matching_file(args.ba_matches_filename, width=args.img_width,
                                                                       height=args.img_height)
         # sparse_flow_img = utils.flow_to_image(sparse_flow_ba)
-        # sk.io.imsave('tmp_sparse_flow_ogscale_bwd.png', sparse_flow_img)
+        # imsave('tmp_sparse_flow_ogscale_bwd.png', sparse_flow_img)
 
         # downscale ba
         sparse_flow_ba, mask_matches_ba, _ = utils.downscale_all(sparse_flow_ba, mask_matches_ba, None, args.downscale)
         sparse_flow, mask_matches = utils.create_mean_map_ab_ba(sparse_flow, mask_matches, sparse_flow_ba,
                                                                 mask_matches_ba, args.downscale)
     #     sparse_flow_img = utils.flow_to_image(sparse_flow_ba)
-    #     sk.io.imsave('tmp_sparse_flow_downscaled_bwd.png', sparse_flow_img)
+    #     imsave('tmp_sparse_flow_downscaled_bwd.png', sparse_flow_img)
     #
     # sparse_flow_img = utils.flow_to_image(sparse_flow)
-    # sk.io.imsave('tmp_sparse_flow_downscaled_mixed.png', sparse_flow_img)
+    # imsave('tmp_sparse_flow_downscaled_mixed.png', sparse_flow_img)
 
     with tf.device('/gpu:0'):
         with tf.Graph().as_default():
@@ -114,13 +115,13 @@ def test_one_image(args):
             if args.save_image:
                 flow_img = utils.flow_to_image(pred_flow, maxflow=max_flow)
                 out_path_full = os.path.join(parent_folder_name, unique_name + '_viz.png')
-                sk.io.imsave(out_path_full, flow_img)
+                imsave(out_path_full, flow_img)
 
             if args.compute_metrics and gt_flow is not None:
                 if args.occ_mask is not None:
-                    occ_mask = sk.io.imread(args.occ_mask)
+                    occ_mask = imread(args.occ_mask)
                 if args.inv_mask is not None:
-                    inv_mask = sk.io.imread(args.inv_mask)
+                    inv_mask = imread(args.inv_mask)
 
             # Compute metrics
             if args.compute_metrics and args.gt_flow is not None:
@@ -263,7 +264,7 @@ def test_batch(args):
                     else:
                         if args.compute_metrics:
                             gt_flow = io_utils.read_flow(path_inputs[4])
-                            occ_mask = sk.io.imread(path_inputs[5])
+                            occ_mask = imread(path_inputs[5])
                             inv_mask = None
                         else:
                             print("Warning: inputted gt_flow and occlusion mask but compute_metrics=False!"
@@ -287,7 +288,7 @@ def test_batch(args):
                                                                                 args.downscale)
                         if args.compute_metrics:
                             gt_flow = io_utils.read_flow(path_inputs[5])
-                            occ_mask = sk.io.imread(path_inputs[6])
+                            occ_mask = imread(path_inputs[6])
                             inv_mask = None
                         else:
                             print("Warning: gt_flow and occ_mask provided but compute_metrics=False"
@@ -300,8 +301,8 @@ def test_batch(args):
                     else:
                         if args.compute_metrics:
                             gt_flow = io_utils.read_flow(path_inputs[4])
-                            occ_mask = sk.io.imread(path_inputs[5])
-                            inv_mask = sk.io.imread(path_inputs[6])
+                            occ_mask = imread(path_inputs[5])
+                            inv_mask = imread(path_inputs[6])
                         else:
                             print("Warning: inputted gt_flow, occlusions mask and invalid mask but compute_metrics"
                                   "=False! Won't compute error, please change the flag's value")
@@ -324,8 +325,8 @@ def test_batch(args):
                                                                                 args.downscale)
                         if args.compute_metrics:
                             gt_flow = io_utils.read_flow(path_inputs[5])
-                            occ_mask = sk.io.imread(path_inputs[6])
-                            inv_mask = sk.io.imread(path_inputs[7])
+                            occ_mask = imread(path_inputs[6])
+                            inv_mask = imread(path_inputs[7])
                         else:
                             print("Warning: gt_flow and occ_mask provided but compute_metrics=False"
                                   "Won't compute error, please change the flag's value")
@@ -379,7 +380,7 @@ def test_batch(args):
                         if args.save_image:
                             flow_img = utils.flow_to_image(pred_flow)
                             out_path_full = os.path.join(out_path_complete, unique_name + '_viz.png')
-                            sk.io.imsave(out_path_full, flow_img)
+                            imsave(out_path_full, flow_img)
 
                         if args.compute_metrics and gt_flow is not None:
                             # Compute all metrics
