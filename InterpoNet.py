@@ -93,9 +93,9 @@ def test_one_image(args):
             else:
                 parent_folder_name = 'interponet_one_inference_{}'.format(os.path.basename(args.img1_filename)[:-4]) \
                     if args.new_par_folder is None else args.new_par_folder
-                print("parent_folder_name: '{}".format(parent_folder_name))
-                if not os.path.isdir(parent_folder_name):
-                    os.makedirs(parent_folder_name)
+            print("parent_folder_name: '{}".format(parent_folder_name))
+            if not os.path.isdir(parent_folder_name):
+                os.makedirs(parent_folder_name)
             out_flo_path = os.path.join(parent_folder_name, unique_name + '_flow.flo')
             print("out_flo_path: '{}'".format(out_flo_path))
             print("Variational post Processing...")
@@ -480,7 +480,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--model_filename', type=str, help='Saved model parameters filename')
     parser.add_argument('--ba_matches_filename', type=str,
-                        help='Sparse matches filename from Second image to first image')
+                        help='Sparse matches filename from Second image to first image', default=None)
 
     parser.add_argument('--img_width', type=int, help='Saved model parameters filename')
     parser.add_argument('--img_height', type=int, help='Saved model parameters filename')
