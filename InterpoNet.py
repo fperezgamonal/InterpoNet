@@ -30,30 +30,19 @@ def test_one_image(args):
     # Load matching file
     sparse_flow, mask_matches = io_utils.load_matching_file(args.matches_filename, width=args.img_width,
                                                             height=args.img_height)
-    # sparse_flow_img = utils.flow_to_image(sparse_flow)
-    # imsave('tmp_sparse_flow_ogscale.png', sparse_flow_img)
 
     # downscale
     print("Downscaling...")
     sparse_flow, mask_matches, edges = utils.downscale_all(sparse_flow, mask_matches, edges, args.downscale)
-    # sparse_flow_img = utils.flow_to_image(sparse_flow)
-    # imsave('tmp_sparse_flow_ogscale_fwd.png', sparse_flow_img)
 
     if args.ba_matches_filename is not None:
         sparse_flow_ba, mask_matches_ba = io_utils.load_matching_file(args.ba_matches_filename, width=args.img_width,
                                                                       height=args.img_height)
-        # sparse_flow_img = utils.flow_to_image(sparse_flow_ba)
-        # imsave('tmp_sparse_flow_ogscale_bwd.png', sparse_flow_img)
 
         # downscale ba
         sparse_flow_ba, mask_matches_ba, _ = utils.downscale_all(sparse_flow_ba, mask_matches_ba, None, args.downscale)
         sparse_flow, mask_matches = utils.create_mean_map_ab_ba(sparse_flow, mask_matches, sparse_flow_ba,
                                                                 mask_matches_ba, args.downscale)
-    #     sparse_flow_img = utils.flow_to_image(sparse_flow_ba)
-    #     imsave('tmp_sparse_flow_downscaled_bwd.png', sparse_flow_img)
-    #
-    # sparse_flow_img = utils.flow_to_image(sparse_flow)
-    # imsave('tmp_sparse_flow_downscaled_mixed.png', sparse_flow_img)
 
     with tf.device('/gpu:0'):
         with tf.Graph().as_default():
@@ -108,6 +97,7 @@ def test_one_image(args):
             pred_flow = io_utils.read_flow(out_flo_path)
 
             if args.compute_metrics and args.gt_flow is not None:
+                print("Compute metrics is True and gt_flow is not None")
                 gt_flow = io_utils.read_flow(args.gt_flow)
                 max_flow = np.max(np.sqrt(gt_flow[:, :, 0] ** 2 + gt_flow[:, :, 1] ** 2))  # max velocity for gt
             else:
@@ -118,7 +108,7 @@ def test_one_image(args):
                 out_path_full = os.path.join(parent_folder_name, unique_name + '_viz.png')
                 imsave(out_path_full, flow_img)
 
-            if args.compute_metrics and gt_flow is not None:
+            if args.compute_metrics and args.gt_flow is not None:
                 if args.occ_mask is not None:
                     occ_mask = imread(args.occ_mask)
                 if args.inv_mask is not None:
