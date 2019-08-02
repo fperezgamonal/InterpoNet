@@ -105,16 +105,26 @@ def test_one_image(args):
             # Read outputted flow to compute metrics
             pred_flow = io_utils.read_flow(out_flo_path)
 
+            if args.compute_metrics and args.gt_flow is not None:
+                gt_flow = io_utils.read_flow(args.gt_flow)
+                max_flow = np.max(np.sqrt(gt_flow[:, :, 0] ** 2 + gt_flow[:, :, 1] ** 2))  # max velocity for gt
+            else:
+                max_flow = None
             # Save image visualization of predicted flow (Middlebury colour coding)
             if args.save_image:
-                flow_img = utils.flow_to_image(pred_flow)
+                flow_img = utils.flow_to_image(pred_flow, maxflow=max_flow)
                 out_path_full = os.path.join(parent_folder_name, unique_name + '_viz.png')
                 sk.io.imsave(out_path_full, flow_img)
 
+            if args.compute_metrics and gt_flow is not None:
+                if args.occ_mask is not None:
+                    occ_mask = sk.io.imread(args.occ_mask)
+                if args.inv_mask is not None:
+                    inv_mask = sk.io.imread(args.inv_mask)
+
             # Compute metrics
             if args.compute_metrics and args.gt_flow is not None:
-                metrics = utils.compute_all_metrics(pred_flow, args.gt_flow, occ_mask=args.occ_mask,
-                                                    inv_mask=args.inv_mask)
+                metrics = utils.compute_all_metrics(pred_flow, gt_flow, occ_mask=occ_mask, inv_mask=inv_mask)
                 metrics_str = utils.get_metrics(metrics, flow_fname=unique_name)
                 print(metrics_str)  # print to stdout (use test_batch to log several images' error metrics to file)
 

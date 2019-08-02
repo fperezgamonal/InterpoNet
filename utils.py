@@ -372,7 +372,7 @@ def flow_error_mask(tu, tv, u, v, mask=None, gt_value=False, bord=0):
     return mang, stdang, mepe
 
 
-def flow_to_image(flow):
+def flow_to_image(flow, maxflow=None):
     """
     Convert flow into middlebury color code image
     :param flow: optical flow map
@@ -397,7 +397,10 @@ def flow_to_image(flow):
     minv = min(minv, np.min(v))
 
     rad = np.sqrt(u ** 2 + v ** 2)
-    maxrad = max(-1, np.max(rad))
+    if maxflow is None:
+        maxrad = max(-1, np.max(rad))
+    else:
+        maxrad = maxflow
 
     if DEBUG:
         print("max flow: {.4f}\nflow range:\nu = {.3f} .. {.3f}\nv = {.3f} .. {.3f}".format(maxrad, minu, maxu, minv,

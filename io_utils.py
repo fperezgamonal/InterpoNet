@@ -39,8 +39,8 @@ def load_flow_file(filename):
 
     with open(filename, 'rb') as f:
         tag = np.fromfile(f, np.float32, count=1)
-        width = np.fromfile(f, np.int32, count=1)
-        height = np.fromfile(f, np.int32, count=1)
+        width = np.fromfile(f, np.int32, count=1)[0]
+        height = np.fromfile(f, np.int32, count=1)[0]
 
         # sanity check
 
@@ -171,8 +171,8 @@ def load_edges_file(edges_file_name, width, height):
 
 
 def load_matching_file(filename, width, height):
-    img = np.zeros([height, width, 2])
-    mask = -np.ones([height, width])
+    img = np.zeros([height, width, 2]).astype(np.float32)
+    mask = -np.ones([height, width]).astype(np.uint8)
 
     if os.path.getsize(filename) == 0:
         print('empty file: %s' % filename)
