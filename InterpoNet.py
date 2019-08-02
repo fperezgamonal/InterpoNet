@@ -116,7 +116,7 @@ def test_one_image(args):
 
             # Compute metrics
             if args.compute_metrics and args.gt_flow is not None:
-                metrics, _, _, _ = utils.compute_all_metrics(pred_flow, gt_flow, occ_mask=occ_mask, inv_mask=inv_mask)
+                metrics, _, _, _, _ = utils.compute_all_metrics(pred_flow, gt_flow, occ_mask=occ_mask, inv_mask=inv_mask)
                 metrics_str = utils.get_metrics(metrics, flow_fname=unique_name)
                 print(metrics_str)  # print to stdout (use test_batch to log several images' error metrics to file)
 
