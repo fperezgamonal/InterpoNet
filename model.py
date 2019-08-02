@@ -10,7 +10,8 @@ def conv_layer(conv_input, name, shape, reuse=None, activation=tf.nn.elu):
         return activation(bias, name=scope.name)
 
 
-def getNetwork(input_img, mask, edges, reuse=tf.AUTO_REUSE):
+# TODO: do bilinear interpolation with tensorflow (like FlowNet2-tf) to remove skimage dependencies (problems in server)
+def getNetwork(input_img, mask, edges, og_height, og_width, reuse=tf.AUTO_REUSE):
     images = tf.concat([input_img, mask, edges], axis=3)
 
     conv1 = conv_layer(conv_input=images, name='conv1', shape=[7, 7, 4, 32])
@@ -35,5 +36,7 @@ def getNetwork(input_img, mask, edges, reuse=tf.AUTO_REUSE):
     detour9 = conv_layer(conv_input=conv9, name='conv_out_9', shape=[7, 7, 256, 2], activation=tf.identity)
     detour10 = conv_layer(conv_input=conv10, name='conv_out_10', shape=[7, 7, 256, 2], activation=tf.identity)
 
-    return detour10
+    # Bilinear interpolation to original size
+    flow = tf.image.resize_bilinear(detour10, tf.stack([og_height, og_width]), align_corners=True)
+    return flow
 

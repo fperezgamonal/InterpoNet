@@ -1,6 +1,6 @@
 import numpy as np
 import tensorflow as tf
-import skimage as sk
+# import skimage as sk => to remove if everything works as expected
 import utils
 import io_utils
 import model
@@ -65,7 +65,8 @@ def test_one_image(args):
             edges_ph = tf.placeholder(tf.float32, shape=(None, sparse_flow.shape[0], sparse_flow.shape[1], 1),
                                       name='edges_ph')
 
-            forward_model = model.getNetwork(sparse_flow_ph, matches_mask_ph, edges_ph, reuse=False)
+            forward_model = model.getNetwork(sparse_flow_ph, matches_mask_ph, edges_ph, args.img_height, args.img_width,
+                                             reuse=False)
 
             saver_keep = tf.train.Saver(tf.all_variables(), max_to_keep=0)
 
@@ -79,13 +80,13 @@ def test_one_image(args):
                 matches_mask_ph: np.reshape(mask_matches, [1, mask_matches.shape[0], mask_matches.shape[1], 1]),
                 edges_ph: np.expand_dims(np.expand_dims(edges, axis=0), axis=3),
             })
-            print("Upscaling...")
-            upscaled_pred = sk.transform.resize(prediction[0], [args.img_height, args.img_width, 2],
-                                                preserve_range=True, order=3)
+            # print("Upscaling...") ==> to remove once it works (done internally by the network)
+            # upscaled_pred = sk.transform.resize(prediction[0], [args.img_height, args.img_width, 2],
+            #                                     preserve_range=True, order=3)
 
             if not os.path.isdir('tmp_interponet'):
                 os.makedirs('tmp_interponet')
-            io_utils.save_flow2file(upscaled_pred, filename='tmp_interponet/out_no_var.flo')
+            io_utils.save_flow2file(prediction[0], filename='tmp_interponet/out_no_var.flo')
 
             # But if out_dir is provided as a full path to output flow, keep it
             unique_name = os.path.basename(args.img1_filename)[:-4]
@@ -146,7 +147,8 @@ def test_batch(args):
                                      name='mask_matches_ph')
     edges_ph = tf.placeholder(tf.float32, shape=(None, height_downsample, width_downsample, 1), name='edges_ph')
 
-    forward_model = model.getNetwork(sparse_flow_ph, mask_matches_ph, edges_ph, reuse=False)
+    forward_model = model.getNetwork(sparse_flow_ph, mask_matches_ph, edges_ph, args.img_height, args.img_width,
+                                     reuse=False)
 
     saver_keep = tf.train.Saver(tf.all_variables(), max_to_keep=0)
 
@@ -352,13 +354,13 @@ def test_batch(args):
                                                                        mask_matches.shape[1], 1]),
                             edges_ph: np.expand_dims(np.expand_dims(edges, axis=0), axis=3),
                         })
-                        # Upscale prediction
-                        upscaled_pred = sk.transform.resize(prediction[0], [args.img_height, args.img_width, 2],
-                                                            preserve_range=True, order=3)
+                        # # Upscale prediction  ==> done internally by the network
+                        # upscaled_pred = sk.transform.resize(prediction[0], [args.img_height, args.img_width, 2],
+                        #                                     preserve_range=True, order=3)
 
                         if not os.path.isdir('tmp_interponet'):
                             os.makedirs('tmp_interponet')
-                        io_utils.save_flow2file(upscaled_pred, filename='tmp_interponet/out_no_var.flo')
+                        io_utils.save_flow2file(prediction[0], filename='tmp_interponet/out_no_var.flo')
 
                         parent_folder_name = path_inputs[0].split('/')[-2] if args.new_par_folder is None \
                             else args.new_par_folder
