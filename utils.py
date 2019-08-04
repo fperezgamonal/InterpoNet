@@ -372,10 +372,13 @@ def flow_error_mask(tu, tv, u, v, mask=None, gt_value=False, bord=0):
     return mang, stdang, mepe
 
 
-def flow_to_image(flow, maxflow=None):
+# Added 'maxflow' to control saturation (to compare different flow visualisations)
+# Adapted from Middlebury devkit code: http://vision.middlebury.edu/flow/code/flow-code.zip
+def flow_to_image(flow, maxflow=-1):
     """
     Convert flow into middlebury color code image
     :param flow: optical flow map
+    :param maxflow: normalising constant (specifies maximum motion).
     :return: optical flow image in middlebury color
     """
     u = flow[:, :, 0]
@@ -385,33 +388,37 @@ def flow_to_image(flow, maxflow=None):
     maxv = -999.
     minu = 999.
     minv = 999.
+    maxrad = -1
 
-    idxUnknow = (abs(u) > UNKNOWN_FLOW_THRESH) | (abs(v) > UNKNOWN_FLOW_THRESH)
-    u[idxUnknow] = 0
-    v[idxUnknow] = 0
+    idxUnknown = (abs(u) > UNKNOWN_FLOW_THRESH) | (abs(v) > UNKNOWN_FLOW_THRESH)
+    u[idxUnknown] = 0
+    v[idxUnknown] = 0
 
-    maxu = max(maxu, np.max(u))
-    minu = min(minu, np.min(u))
+    maxu = np.nanmax(maxu, np.nanmax(u))
+    minu = np.nanmin(minu, np.nanmin(u))
 
-    maxv = max(maxv, np.max(v))
-    minv = min(minv, np.min(v))
+    maxv = np.nanmax(maxv, np.nanmax(v))
+    minv = np.nanmin(minv, np.nanmin(v))
 
     rad = np.sqrt(u ** 2 + v ** 2)
-    if maxflow is None:
-        maxrad = max(-1, np.max(rad))
-    else:
-        maxrad = maxflow
-
+    maxrad = max(rad, maxrad)
     if DEBUG:
         print("max flow: {.4f}\nflow range:\nu = {.3f} .. {.3f}\nv = {.3f} .. {.3f}".format(maxrad, minu, maxu, minv,
                                                                                             maxv))
+    if maxflow > 0:
+        maxrad = maxflow
 
-    u = u/(maxrad + np.finfo(float).eps)
-    v = v/(maxrad + np.finfo(float).eps)
+    if maxrad == 0:  # if flow = 0 everywhere
+        maxrad = 1
 
-    img = compute_color(u, v)
+    if DEBUG:
+        print("Normalising by: {.4f}\n".format(maxrad))
 
-    idx = np.repeat(idxUnknow[:, :, np.newaxis], 3, axis=2)
+    eps = np.finfo(float).eps
+
+    img = compute_color(u / (maxrad + eps), v / (maxrad + eps))
+
+    idx = np.repeat(idxUnknown[:, :, np.newaxis], 3, axis=2)
     img[idx] = 0
 
     return np.uint8(img)
@@ -437,25 +444,25 @@ def compute_color(u, v):
 
     a = np.arctan2(-v, -u) / np.pi
 
-    fk = (a+1) / 2 * (ncols - 1) + 1
+    fk = (a+1) / 2 * (ncols - 1) + 1  # og code: float fk = (a + 1.0) / 2.0 * (ncols-1); ==> extra +1?
 
     k0 = np.floor(fk).astype(int)
 
-    k1 = k0 + 1
+    k1 = k0 + 1  # og code: int k1 = (k0 + 1) % ncols;
     k1[k1 == ncols+1] = 1
     f = fk - k0
-
-    for i in range(0, np.size(colorwheel,1)):
+    # f = 0 # uncomment to see original color wheel
+    for i in range(0, np.size(colorwheel, 1)):
         tmp = colorwheel[:, i]
-        col0 = tmp[k0-1] / 255
+        col0 = tmp[k0-1] / 255  # extra -1 above
         col1 = tmp[k1-1] / 255
         col = (1-f) * col0 + f * col1
 
         idx = rad <= 1
-        col[idx] = 1-rad[idx]*(1-col[idx])
+        col[idx] = 1-rad[idx]*(1-col[idx])  # increase saturation with radius
         notidx = np.logical_not(idx)
 
-        col[notidx] *= 0.75
+        col[notidx] *= 0.75  # out of range
         img[:, :, i] = np.uint8(np.floor(255 * col*(1-nanIdx)))
 
     return img
@@ -464,6 +471,10 @@ def compute_color(u, v):
 def make_color_wheel():
     """
     Generate color wheel according Middlebury color code
+    relative lengths of color transitions:
+    these are chosen based on perceptual similarity
+    (e.g. one can distinguish more shades between red and yellow
+    than between yellow and green)
     :return: Color wheel
     """
     RY = 15
