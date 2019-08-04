@@ -1,13 +1,13 @@
 import numpy as np
 import os
-from skimage.util.shape import view_as_blocks
-from skimage.transform import rescale
+# from skimage.util.shape import view_as_blocks
+# from skimage.transform import rescale
 from math import ceil
 
 UNKNOWN_FLOW_THRESH = 1e9
 SMALLFLOW = 0.0
 LARGEFLOW = 1e8
-DEBUG = False  # flag to print out verbose information like: range of optical flow, dimensions of matrix, etc.
+DEBUG = True  # flag to print out verbose information like: range of optical flow, dimensions of matrix, etc.
 
 
 def downscale_all(sparse_flow, mask, edges, downscale):
@@ -394,17 +394,17 @@ def flow_to_image(flow, maxflow=-1):
     u[idxUnknown] = 0
     v[idxUnknown] = 0
 
-    maxu = np.nanmax(maxu, np.nanmax(u))
-    minu = np.nanmin(minu, np.nanmin(u))
+    maxu = np.nanmax([maxu, np.nanmax(u)])
+    minu = np.nanmin([minu, np.nanmin(u)])
 
-    maxv = np.nanmax(maxv, np.nanmax(v))
-    minv = np.nanmin(minv, np.nanmin(v))
+    maxv = np.nanmax([maxv, np.nanmax(v)])
+    minv = np.nanmin([minv, np.nanmin(v)])
 
     rad = np.sqrt(u ** 2 + v ** 2)
-    maxrad = max(rad, maxrad)
+    maxrad = np.max(np.max(rad), maxrad)
     if DEBUG:
-        print("max flow: {.4f}\nflow range:\nu = {.3f} .. {.3f}\nv = {.3f} .. {.3f}".format(maxrad, minu, maxu, minv,
-                                                                                            maxv))
+        print("max flow: {0:.4f}\nflow range:\nu = {1:.3f} .. {2:.3f}\nv = {3:.3f} .. {4:.3f}".format(maxrad, minu,
+                                                                                                      maxu, minv, maxv))
     if maxflow > 0:
         maxrad = maxflow
 
@@ -412,12 +412,11 @@ def flow_to_image(flow, maxflow=-1):
         maxrad = 1
 
     if DEBUG:
-        print("Normalising by: {.4f}\n".format(maxrad))
-
+        print("Normalising by: {:.4f}\n".format(maxrad))
     eps = np.finfo(float).eps
-
     img = compute_color(u / (maxrad + eps), v / (maxrad + eps))
 
+    # Set unknown pixels to black
     idx = np.repeat(idxUnknown[:, :, np.newaxis], 3, axis=2)
     img[idx] = 0
 
