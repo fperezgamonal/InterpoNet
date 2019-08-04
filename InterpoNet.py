@@ -103,10 +103,13 @@ def test_one_image(args):
             else:
                 max_flow = None
             # Save image visualization of predicted flow (Middlebury colour coding)
+            # save normalised and unormalised versions (awful results may be clipped to some colour)
             if args.save_image:
-                flow_img = utils.flow_to_image(pred_flow, maxflow=max_flow)
+                flow_img = utils.flow_to_image(pred_flow)
+                flow_img_norm = utils.flow_to_image(pred_flow, maxflow=max_flow)
                 out_path_full = os.path.join(parent_folder_name, unique_name + '_viz.png')
                 imsave(out_path_full, flow_img)
+                imsave(out_path_full.replace('.png', '_norm_gt_max_motion.png'), flow_img_norm)
 
             if args.compute_metrics and args.gt_flow is not None:
                 if args.occ_mask is not None:
@@ -368,11 +371,21 @@ def test_batch(args):
                         # Read outputted flow to compute metrics
                         pred_flow = io_utils.read_flow(out_flo_path)
 
+                        if args.compute_metrics and args.gt_flow is not None:
+                            print("Compute metrics is True and gt_flow is not None")
+                            gt_flow = io_utils.read_flow(args.gt_flow)
+                            max_flow = np.max(
+                                np.sqrt(gt_flow[:, :, 0] ** 2 + gt_flow[:, :, 1] ** 2))  # max velocity for gt
+                        else:
+                            max_flow = None
+
                         # Save image visualization of predicted flow (Middlebury colour coding)
                         if args.save_image:
                             flow_img = utils.flow_to_image(pred_flow)
+                            flow_img_norm = utils.flow_to_image(pred_flow, maxflow=max_flow)
                             out_path_full = os.path.join(out_path_complete, unique_name + '_viz.png')
                             imsave(out_path_full, flow_img)
+                            imsave(out_path_full.replace('.png', '_norm_gt_max_motion.png'), flow_img_norm)
 
                         if args.compute_metrics and gt_flow is not None:
                             # Compute all metrics
