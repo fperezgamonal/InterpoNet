@@ -1,5 +1,6 @@
 import tensorflow as tf
-import tensorflow.compat.v2 as tf_v2
+# TODO: should use TF 2.0 compat version to interpolate (but it is not available in the cluster...)
+# import tensorflow.compat.v2 as tf_v2
 # older tf.resize_* had a pretty nasty bug ==> https://github.com/tensorflow/tensorflow/issues/6720
 
 
@@ -40,8 +41,11 @@ def getNetwork(input_img, mask, edges, og_height, og_width, reuse=tf.AUTO_REUSE)
 
     # Bilinear interpolation to original size
     # flow = tf.image.resize_bicubic(detour10, tf.stack([og_height, og_width]), align_corners=True, half
-    flow = tf_v2.image.resize(detour10, tf.stack([og_height, og_width]), method=ResizeMethod.BILINEAR,
-                              preserve_aspect_ratio=False)  # should not be necessary
+    # Desireable
+    # flow = tf_v2.image.resize(detour10, tf.stack([og_height, og_width]), method=ResizeMethod.BILINEAR,
+    #                          preserve_aspect_ratio=True)
+    flow = tf.image.resize_bicubic(detour10, tf.stack([og_height, og_width]), align_corners=True,
+                                   half_pixel_centers=True)
 
     return flow
 
