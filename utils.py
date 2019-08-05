@@ -1,7 +1,7 @@
 import numpy as np
 import os
-# from skimage.util.shape import view_as_blocks
-# from skimage.transform import rescale
+from skimage.util.shape import view_as_blocks
+from skimage.transform import rescale
 from math import ceil
 
 UNKNOWN_FLOW_THRESH = 1e9
