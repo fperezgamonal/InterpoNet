@@ -101,7 +101,7 @@ def test_one_image(args):
                 gt_flow = io_utils.read_flow(args.gt_flow)
                 max_flow = np.max(np.sqrt(gt_flow[:, :, 0] ** 2 + gt_flow[:, :, 1] ** 2))  # max velocity for gt
             else:
-                max_flow = None
+                max_flow = -1
             # Save image visualization of predicted flow (Middlebury colour coding)
             # save normalised and unormalised versions (awful results may be clipped to some colour)
             if args.save_image:
@@ -377,7 +377,7 @@ def test_batch(args):
                             max_flow = np.max(
                                 np.sqrt(gt_flow[:, :, 0] ** 2 + gt_flow[:, :, 1] ** 2))  # max velocity for gt
                         else:
-                            max_flow = None
+                            max_flow = -1
 
                         # Save image visualization of predicted flow (Middlebury colour coding)
                         if args.save_image:
@@ -388,6 +388,7 @@ def test_batch(args):
                             imsave(out_path_full.replace('.png', '_norm_gt_max_motion.png'), flow_img_norm)
 
                         if args.compute_metrics and gt_flow is not None:
+                            print("Computing metrics...")
                             # Compute all metrics
                             metrics, not_occluded, not_disp_s010, not_disp_s1040, not_disp_s40plus = \
                                 utils.compute_all_metrics(pred_flow, gt_flow, occ_mask=occ_mask,
