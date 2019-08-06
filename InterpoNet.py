@@ -70,12 +70,11 @@ def test_one_image(args):
                 matches_mask_ph: np.reshape(mask_matches, [1, mask_matches.shape[0], mask_matches.shape[1], 1]),
                 edges_ph: np.expand_dims(np.expand_dims(edges, axis=0), axis=3),
             })
-            # print("Upscaling...")
+            print("Upscaling...")
             # skimage transform.resize is simpler to call and ensures to preserve the range but does not work on cluster
             # due to mismatch library versions
             upscaled_pred = sk.transform.resize(prediction[0], [args.img_height, args.img_width, 2],
                                                 preserve_range=True, order=3)
-            print("prediction[0].shape: {}".format(prediction[0].shape))
             # upscaled_pred = cv2.resize(prediction[0], (args.img_width, args.img_height),  # keeps n_ch cte
             #                            interpolation=cv2.INTER_CUBIC)  # should preserve dtype
             # # Careful, opencv swaps width and height, must swap them again
