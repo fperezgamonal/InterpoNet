@@ -9,7 +9,7 @@ import os
 import datetime
 import shutil
 from imageio import imsave, imread
-
+import cv2
 
 # TODO: maybe for a more fair comparison, use padding with zeros like we do with flownetS
 # auxiliar function to compute the new image size (for test only) for input images which are not divisble by divisor
@@ -69,13 +69,19 @@ def test_one_image(args):
                 matches_mask_ph: np.reshape(mask_matches, [1, mask_matches.shape[0], mask_matches.shape[1], 1]),
                 edges_ph: np.expand_dims(np.expand_dims(edges, axis=0), axis=3),
             })
-            # print("Upscaling...") ==> to remove once it works (done internally by the network)
+            # print("Upscaling...")
+            # skimage transform.resize is simpler to call and ensures to preserve the range but does not work on cluster
+            # due to mismatch library versions
             # upscaled_pred = sk.transform.resize(prediction[0], [args.img_height, args.img_width, 2],
             #                                     preserve_range=True, order=3)
+            upscaled_pred = cv2.resize(prediction[0], (args.img_width, args.img_height),  # keeps n_ch cte
+                                       interpolation=cv2.INTER_CUBIC)  # should preserve dtype
+            # Careful, opencv swaps width and height, must swap them again
+            upscaled_pred = np.transpose(upscaled_pred, axes=(1, 0, 2))
 
             if not os.path.isdir('tmp_interponet'):
                 os.makedirs('tmp_interponet')
-            io_utils.save_flow2file(prediction[0], filename='tmp_interponet/out_no_var.flo')
+            io_utils.save_flow2file(upscaled_pred, filename='tmp_interponet/out_no_var.flo')
 
             # But if out_dir is provided as a full path to output flow, keep it
             unique_name = os.path.basename(args.img1_filename)[:-4]
@@ -347,13 +353,19 @@ def test_batch(args):
                                                                        mask_matches.shape[1], 1]),
                             edges_ph: np.expand_dims(np.expand_dims(edges, axis=0), axis=3),
                         })
-                        # # Upscale prediction  ==> done internally by the network
+                        # print("Upscaling...")
+                        # skimage transform.resize is simpler to call and ensures to preserve the range but does
+                        # not work on cluster due to mismatch library versions
                         # upscaled_pred = sk.transform.resize(prediction[0], [args.img_height, args.img_width, 2],
                         #                                     preserve_range=True, order=3)
+                        upscaled_pred = cv2.resize(prediction[0], (args.img_width, args.img_height),  # keeps n_ch cte
+                                                   interpolation=cv2.INTER_CUBIC)  # should preserve dtype
+                        # Careful, opencv swaps width and height, must swap them again
+                        upscaled_pred = np.transpose(upscaled_pred, axes=(1, 0, 2))
 
                         if not os.path.isdir('tmp_interponet'):
                             os.makedirs('tmp_interponet')
-                        io_utils.save_flow2file(prediction[0], filename='tmp_interponet/out_no_var.flo')
+                        io_utils.save_flow2file(upscaled_pred, filename='tmp_interponet/out_no_var.flo')
 
                         parent_folder_name = path_inputs[0].split('/')[-2] if args.new_par_folder is None \
                             else args.new_par_folder

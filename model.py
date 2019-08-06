@@ -39,13 +39,20 @@ def getNetwork(input_img, mask, edges, og_height, og_width, reuse=tf.AUTO_REUSE)
     detour9 = conv_layer(conv_input=conv9, name='conv_out_9', shape=[7, 7, 256, 2], activation=tf.identity)
     detour10 = conv_layer(conv_input=conv10, name='conv_out_10', shape=[7, 7, 256, 2], activation=tf.identity)
 
-    # Bilinear interpolation to original size
+    # NOTE: we wanted to do the resizing internally so it could be faster (on the GPU) but we found several problems:
+    #   * Functions of the family tf.image.resize_... have a nasty bug ==>
+    #   * This bug is fixed on TF 2.0 but we cannot install it on the server or locally ATM
+    #   * This implies that we revert to resizing externally, probably on the CPU and hence slower
+    #   * We cannot use skimage.transform.resize due to mismatch library versions
+    #   * We finally use opencv's resize but need to add an extra transpose as it swaps the channels (width <==> height)
+    # Bilinear interpolation to original size (BUG in V1)
     # flow = tf.image.resize_bicubic(detour10, tf.stack([og_height, og_width]), align_corners=True, half
-    # Desireable
+    # Desireable (BUG FREE - V2)
     # flow = tf_v2.image.resize(detour10, tf.stack([og_height, og_width]), method=ResizeMethod.BILINEAR,
     #                          preserve_aspect_ratio=True)
-    flow = tf.image.resize_bicubic(detour10, tf.stack([og_height, og_width]), align_corners=True,)
+    # argument 'half_pixel_centers' reduces the bug impact but is not available on TF 1.12 (cluster version)
+    # flow = tf.image.resize_bicubic(detour10, tf.stack([og_height, og_width]), align_corners=True,)
     # half_pixel_centers=True) not available on 1.12 (cluster version) :(
 
-    return flow
+    return detour10  # flow
 
