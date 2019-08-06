@@ -126,7 +126,7 @@ def test_one_image(args):
             if args.compute_metrics and args.gt_flow is not None:
                 if args.occ_mask is not None:
                     # occ_mask = imread(args.occ_mask)
-                    occ_mask = Image.open(args.occ_mask)
+                    occ_mask = np.array(Image.open(args.occ_mask))
                     print("occ_mask.dtype: {}\nocc_mask.shape: {}\nnp.unique(occ_mask): {}".format(
                         occ_mask.dtype, occ_mask.shape, np.unique(occ_mask)))
                     occ_mask_uint8 = occ_mask.astype(np.uint8)
@@ -134,7 +134,7 @@ def test_one_image(args):
                         occ_mask_uint8.dtype, occ_mask_uint8.shape, np.unique(occ_mask_uint8)))
                 if args.inv_mask is not None:
                     # inv_mask = imread(args.inv_mask)
-                    inv_mask = Image.open(args.inv_mask)
+                    inv_mask = np.array(Image.open(args.inv_mask))
                     print("inv_mask.dtype: {}\ninv_mask.shape: {}\nnp.unique(inv_mask): {}".format(
                         inv_mask.dtype, inv_mask.shape, np.unique(inv_mask)))
                     inv_mask_uint8 = inv_mask.astype(np.uint8)
