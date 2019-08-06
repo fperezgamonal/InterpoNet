@@ -9,7 +9,7 @@ import os
 import datetime
 import shutil
 from imageio import imsave, imread
-import cv2
+# import cv2
 
 
 # TODO: maybe for a more fair comparison, use padding with zeros like we do with flownetS
