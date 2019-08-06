@@ -1,6 +1,6 @@
 import numpy as np
 import tensorflow as tf
-# import skimage as sk => to remove if everything works as expected
+import skimage as sk  # => to remove if everything works as expected
 import utils
 import io_utils
 import model
@@ -10,6 +10,7 @@ import datetime
 import shutil
 from imageio import imsave, imread
 import cv2
+
 
 # TODO: maybe for a more fair comparison, use padding with zeros like we do with flownetS
 # auxiliar function to compute the new image size (for test only) for input images which are not divisble by divisor
@@ -72,13 +73,13 @@ def test_one_image(args):
             # print("Upscaling...")
             # skimage transform.resize is simpler to call and ensures to preserve the range but does not work on cluster
             # due to mismatch library versions
-            # upscaled_pred = sk.transform.resize(prediction[0], [args.img_height, args.img_width, 2],
-            #                                     preserve_range=True, order=3)
+            upscaled_pred = sk.transform.resize(prediction[0], [args.img_height, args.img_width, 2],
+                                                preserve_range=True, order=3)
             print("prediction[0].shape: {}".format(prediction[0].shape))
-            upscaled_pred = cv2.resize(prediction[0], (args.img_width, args.img_height),  # keeps n_ch cte
-                                       interpolation=cv2.INTER_CUBIC)  # should preserve dtype
-            # Careful, opencv swaps width and height, must swap them again
-            upscaled_pred = np.transpose(upscaled_pred, axes=(1, 0, 2))
+            # upscaled_pred = cv2.resize(prediction[0], (args.img_width, args.img_height),  # keeps n_ch cte
+            #                            interpolation=cv2.INTER_CUBIC)  # should preserve dtype
+            # # Careful, opencv swaps width and height, must swap them again
+            # upscaled_pred = np.transpose(upscaled_pred, axes=(1, 0, 2))
 
             if not os.path.isdir('tmp_interponet'):
                 os.makedirs('tmp_interponet')
