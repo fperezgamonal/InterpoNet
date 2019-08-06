@@ -1,6 +1,9 @@
-import numpy as np
 import tensorflow as tf
+import numpy as np
 import skimage as sk  # => to remove if everything works as expected
+# from imageio import imsave, imread
+from PIL import Image
+# import cv2
 import utils
 import io_utils
 import model
@@ -8,8 +11,6 @@ import argparse
 import os
 import datetime
 import shutil
-from imageio import imsave, imread
-# import cv2
 
 
 # TODO: maybe for a more fair comparison, use padding with zeros like we do with flownetS
@@ -115,14 +116,20 @@ def test_one_image(args):
                 flow_img = utils.flow_to_image(pred_flow)
                 flow_img_norm = utils.flow_to_image(pred_flow, maxflow=max_flow)
                 out_path_full = os.path.join(parent_folder_name, unique_name + '_viz.png')
-                imsave(out_path_full, flow_img)
-                imsave(out_path_full.replace('.png', '_norm_gt_max_motion.png'), flow_img_norm)
+                flow_img_pil = Image.fromarray(flow_img)
+                # imsave(out_path_full, flow_img)
+                flow_img_pil.save(out_path_full)
+                flow_img_norm_pil = Image.fromarray(flow_img_norm)
+                # imsave(out_path_full.replace('.png', '_norm_gt_max_motion.png'), flow_img_norm)
+                flow_img_norm_pil.save(out_path_full.replace('.png', '_norm_gt_max_motion.png'))
 
             if args.compute_metrics and args.gt_flow is not None:
                 if args.occ_mask is not None:
-                    occ_mask = imread(args.occ_mask)
+                    # occ_mask = imread(args.occ_mask)
+                    occ_mask = Image.open(args.occ_mask)
                 if args.inv_mask is not None:
-                    inv_mask = imread(args.inv_mask)
+                    # inv_mask = imread(args.inv_mask)
+                    inv_mask = Image.open(args.inv_mask)
 
             # Compute metrics
             if args.compute_metrics and args.gt_flow is not None:
@@ -266,7 +273,8 @@ def test_batch(args):
                     else:
                         if args.compute_metrics:
                             gt_flow = io_utils.read_flow(path_inputs[4])
-                            occ_mask = imread(path_inputs[5])
+                            # occ_mask = imread(path_inputs[5])
+                            occ_mask = Image.open(path_inputs[5])
                             inv_mask = None
                         else:
                             print("Warning: inputted gt_flow and occlusion mask but compute_metrics=False!"
@@ -290,7 +298,8 @@ def test_batch(args):
                                                                                 args.downscale)
                         if args.compute_metrics:
                             gt_flow = io_utils.read_flow(path_inputs[5])
-                            occ_mask = imread(path_inputs[6])
+                            # occ_mask = imread(path_inputs[6])
+                            occ_mask = Image.open(path_inputs[6])
                             inv_mask = None
                         else:
                             print("Warning: gt_flow and occ_mask provided but compute_metrics=False"
@@ -303,8 +312,10 @@ def test_batch(args):
                     else:
                         if args.compute_metrics:
                             gt_flow = io_utils.read_flow(path_inputs[4])
-                            occ_mask = imread(path_inputs[5])
-                            inv_mask = imread(path_inputs[6])
+                            # occ_mask = imread(path_inputs[5])
+                            occ_mask = Image.open(path_inputs[5])
+                            # inv_mask = imread(path_inputs[6])
+                            inv_mask = Image.open(path_inputs[6])
                         else:
                             print("Warning: inputted gt_flow, occlusions mask and invalid mask but compute_metrics"
                                   "=False! Won't compute error, please change the flag's value")
@@ -327,8 +338,10 @@ def test_batch(args):
                                                                                 args.downscale)
                         if args.compute_metrics:
                             gt_flow = io_utils.read_flow(path_inputs[5])
-                            occ_mask = imread(path_inputs[6])
-                            inv_mask = imread(path_inputs[7])
+                            # occ_mask = imread(path_inputs[6])
+                            occ_mask = Image.open(path_inputs[6])
+                            # inv_mask = imread(path_inputs[7])
+                            inv_mask = Image.open(path_inputs[7])
                         else:
                             print("Warning: gt_flow and occ_mask provided but compute_metrics=False"
                                   "Won't compute error, please change the flag's value")
@@ -354,15 +367,15 @@ def test_batch(args):
                                                                        mask_matches.shape[1], 1]),
                             edges_ph: np.expand_dims(np.expand_dims(edges, axis=0), axis=3),
                         })
-                        # print("Upscaling...")
+                        print("Upscaling...")
                         # skimage transform.resize is simpler to call and ensures to preserve the range but does
                         # not work on cluster due to mismatch library versions
-                        # upscaled_pred = sk.transform.resize(prediction[0], [args.img_height, args.img_width, 2],
-                        #                                     preserve_range=True, order=3)
-                        upscaled_pred = cv2.resize(prediction[0], (args.img_width, args.img_height),  # keeps n_ch cte
-                                                   interpolation=cv2.INTER_CUBIC)  # should preserve dtype
-                        # Careful, opencv swaps width and height, must swap them again
-                        upscaled_pred = np.transpose(upscaled_pred, axes=(1, 0, 2))
+                        upscaled_pred = sk.transform.resize(prediction[0], [args.img_height, args.img_width, 2],
+                                                            preserve_range=True, order=3)
+                        # upscaled_pred = cv2.resize(prediction[0], (args.img_width, args.img_height),  # keeps n_ch cte
+                        #                            interpolation=cv2.INTER_CUBIC)  # should preserve dtype
+                        # # Careful, opencv swaps width and height, must swap them again
+                        # upscaled_pred = np.transpose(upscaled_pred, axes=(1, 0, 2))
 
                         if not os.path.isdir('tmp_interponet'):
                             os.makedirs('tmp_interponet')
@@ -397,8 +410,12 @@ def test_batch(args):
                             flow_img = utils.flow_to_image(pred_flow)
                             flow_img_norm = utils.flow_to_image(pred_flow, maxflow=max_flow)
                             out_path_full = os.path.join(out_path_complete, unique_name + '_viz.png')
-                            imsave(out_path_full, flow_img)
-                            imsave(out_path_full.replace('.png', '_norm_gt_max_motion.png'), flow_img_norm)
+                            flow_img_pil = Image.fromarray(flow_img)
+                            # imsave(out_path_full, flow_img)
+                            flow_img_pil.save(out_path_full)
+                            flow_img_norm_pil = Image.fromarray(flow_img_norm)
+                            # imsave(out_path_full.replace('.png', '_norm_gt_max_motion.png'), flow_img_norm)
+                            flow_img_norm_pil.save(out_path_full.replace('.png', '_norm_gt_max_motion.png'))
 
                         if args.compute_metrics and gt_flow is not None:
                             print("Computing metrics...")
