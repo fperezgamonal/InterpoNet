@@ -74,8 +74,9 @@ def test_one_image(args):
             print("Upscaling...")
             # skimage transform.resize is simpler to call and ensures to preserve the range but does not work on cluster
             # due to mismatch library versions
-            upscaled_pred = sk.transform.resize(prediction[0], [args.img_height, args.img_width, 2],
-                                                preserve_range=True, order=3)
+            upscaled_pred = prediction[0]
+            # upscaled_pred = sk.transform.resize(prediction[0], [args.img_height, args.img_width, 2],
+            #                                     preserve_range=True, order=3)
             # upscaled_pred = cv2.resize(prediction[0], (args.img_width, args.img_height),  # keeps n_ch cte
             #                            interpolation=cv2.INTER_CUBIC)  # should preserve dtype
             # # Careful, opencv swaps width and height, must swap them again
