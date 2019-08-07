@@ -92,11 +92,9 @@ def test_one_image(args):
             else:
                 parent_folder_name = 'interponet_one_inference_{}'.format(os.path.basename(args.img1_filename)[:-4]) \
                     if args.new_par_folder is None else args.new_par_folder
-            print("parent_folder_name: '{}".format(parent_folder_name))
             if not os.path.isdir(parent_folder_name):
                 os.makedirs(parent_folder_name)
             out_flo_path = os.path.join(parent_folder_name, unique_name + '_flow.flo')
-            print("out_flo_path: '{}'".format(out_flo_path))
             print("Variational post Processing...")
             utils.calc_variational_inference_map(args.img1_filename, args.img2_filename,
                                                  'tmp_interponet/out_no_var.flo', out_flo_path, 'sintel')
@@ -125,21 +123,9 @@ def test_one_image(args):
 
             if args.compute_metrics and args.gt_flow is not None:
                 if args.occ_mask is not None:
-                    # occ_mask = imread(args.occ_mask)
                     occ_mask = np.array(Image.open(args.occ_mask))
-                    print("occ_mask.dtype: {}\nocc_mask.shape: {}\nnp.unique(occ_mask): {}".format(
-                        occ_mask.dtype, occ_mask.shape, np.unique(occ_mask)))
-                    occ_mask_uint8 = occ_mask.astype(np.uint8)
-                    print("occ_mask_uint8.dtype: {}\nocc_mask_uint8.shape: {}\nnp.unique(occ_mask_uint8): {}".format(
-                        occ_mask_uint8.dtype, occ_mask_uint8.shape, np.unique(occ_mask_uint8)))
                 if args.inv_mask is not None:
-                    # inv_mask = imread(args.inv_mask)
                     inv_mask = np.array(Image.open(args.inv_mask))
-                    print("inv_mask.dtype: {}\ninv_mask.shape: {}\nnp.unique(inv_mask): {}".format(
-                        inv_mask.dtype, inv_mask.shape, np.unique(inv_mask)))
-                    inv_mask_uint8 = inv_mask.astype(np.uint8)
-                    print("inv_mask_uint8.dtype: {}\ninv_mask_uint8.shape: {}\nnp.unique(inv_mask_uint8): {}".format(
-                        inv_mask_uint8.dtype, inv_mask_uint8.shape, np.unique(inv_mask_uint8)))
 
             # Compute metrics
             if args.compute_metrics and args.gt_flow is not None:
@@ -283,8 +269,7 @@ def test_batch(args):
                     else:
                         if args.compute_metrics:
                             gt_flow = io_utils.read_flow(path_inputs[4])
-                            # occ_mask = imread(path_inputs[5])
-                            occ_mask = Image.open(path_inputs[5])
+                            occ_mask = np.array(Image.open(path_inputs[5]))
                             inv_mask = None
                         else:
                             print("Warning: inputted gt_flow and occlusion mask but compute_metrics=False!"
@@ -308,8 +293,7 @@ def test_batch(args):
                                                                                 args.downscale)
                         if args.compute_metrics:
                             gt_flow = io_utils.read_flow(path_inputs[5])
-                            # occ_mask = imread(path_inputs[6])
-                            occ_mask = Image.open(path_inputs[6])
+                            occ_mask = np.array(Image.open(path_inputs[6]))
                             inv_mask = None
                         else:
                             print("Warning: gt_flow and occ_mask provided but compute_metrics=False"
@@ -322,10 +306,8 @@ def test_batch(args):
                     else:
                         if args.compute_metrics:
                             gt_flow = io_utils.read_flow(path_inputs[4])
-                            # occ_mask = imread(path_inputs[5])
-                            occ_mask = Image.open(path_inputs[5])
-                            # inv_mask = imread(path_inputs[6])
-                            inv_mask = Image.open(path_inputs[6])
+                            occ_mask = np.array(Image.open(path_inputs[5]))
+                            inv_mask = np.array(Image.open(path_inputs[6]))
                         else:
                             print("Warning: inputted gt_flow, occlusions mask and invalid mask but compute_metrics"
                                   "=False! Won't compute error, please change the flag's value")
@@ -348,10 +330,8 @@ def test_batch(args):
                                                                                 args.downscale)
                         if args.compute_metrics:
                             gt_flow = io_utils.read_flow(path_inputs[5])
-                            # occ_mask = imread(path_inputs[6])
-                            occ_mask = Image.open(path_inputs[6])
-                            # inv_mask = imread(path_inputs[7])
-                            inv_mask = Image.open(path_inputs[7])
+                            occ_mask = np.array(Image.open(path_inputs[6]))
+                            inv_mask = np.array(Image.open(path_inputs[7]))
                         else:
                             print("Warning: gt_flow and occ_mask provided but compute_metrics=False"
                                   "Won't compute error, please change the flag's value")
