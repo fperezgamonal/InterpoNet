@@ -7,7 +7,7 @@ from math import ceil
 UNKNOWN_FLOW_THRESH = 1e9
 SMALLFLOW = 0.0
 LARGEFLOW = 1e8
-DEBUG = True  # flag to print out verbose information like: range of optical flow, dimensions of matrix, etc.
+DEBUG = False  # flag to print out verbose information like: range of optical flow, dimensions of matrix, etc.
 
 
 def downscale_all(sparse_flow, mask, edges, downscale):

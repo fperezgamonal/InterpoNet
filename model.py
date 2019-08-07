@@ -51,8 +51,8 @@ def getNetwork(input_img, mask, edges, og_height, og_width, reuse=tf.AUTO_REUSE)
     # flow = tf_v2.image.resize(detour10, tf.stack([og_height, og_width]), method=ResizeMethod.BILINEAR,
     #                          preserve_aspect_ratio=True)
     # argument 'half_pixel_centers' reduces the bug impact but is not available on TF 1.12 (cluster version)
-    flow = tf.image.resize_bicubic(detour10, tf.stack([og_height, og_width]), align_corners=True,)
+    # flow = tf.image.resize_bicubic(detour10, tf.stack([og_height, og_width]), align_corners=True,)
     # half_pixel_centers=True) only available on >= 1.14 :(
 
-    return flow  # flow
+    return detour10  # flow
 
