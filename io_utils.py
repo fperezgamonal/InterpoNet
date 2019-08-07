@@ -171,8 +171,8 @@ def load_edges_file(edges_file_name, width, height):
 
 
 def load_matching_file(filename, width, height):
-    img = np.zeros([height, width, 2]).astype(np.float32)
-    mask = -np.ones([height, width]).astype(np.uint8)
+    img = np.zeros([height, width, 2])
+    mask = -np.ones([height, width])
 
     if os.path.getsize(filename) == 0:
         print('empty file: %s' % filename)

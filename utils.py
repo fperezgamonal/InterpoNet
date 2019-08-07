@@ -190,7 +190,6 @@ def compute_all_metrics(est_flow, gt_flow, occ_mask=None, inv_mask=None):
 
     # Check if there are any occluded pixels
     if occ_mask.size and np.unique(occ_mask).shape[0] > 1:  # array is not empty and contains at least 2 diff. values
-        print("Occlusion mask is not empty")
         # EPE-matched (pixels that are not occluded)
         # Always mask out invalid pixels (inv_mask == 1)
         # For matched we want to avoid the 1's
