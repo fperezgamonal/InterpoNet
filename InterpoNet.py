@@ -96,12 +96,16 @@ def test_one_image(args):
             if not os.path.isdir(parent_folder_name):
                 os.makedirs(parent_folder_name)
             out_flo_path = os.path.join(parent_folder_name, unique_name + '_flow.flo')
-            print("Variational post Processing...")
-            utils.calc_variational_inference_map(args.img1_filename, args.img2_filename,
-                                                 'tmp_interponet/out_no_var.flo', out_flo_path, 'sintel')
 
-            # Read outputted flow to compute metrics
-            pred_flow = io_utils.read_flow(out_flo_path)
+            if args.variational_refinment:
+                print("Variational post Processing...")
+                utils.calc_variational_inference_map(args.img1_filename, args.img2_filename,
+                                                     'tmp_interponet/out_no_var.flo', out_flo_path, 'sintel')
+
+                # Read outputted flow to compute metrics
+                pred_flow = io_utils.read_flow(out_flo_path)
+            else:
+                pred_flow = io_utils.read_flow('tmp_interponet/out_no_var.flo')
 
             if args.compute_metrics and args.gt_flow is not None:
                 print("Compute metrics is True and gt_flow is not None")
@@ -382,11 +386,14 @@ def test_batch(args):
                         out_flo_path = os.path.join(out_path_complete, unique_name + '_flow.flo')
 
                         # Variational post Processing
-                        utils.calc_variational_inference_map(img1_filename, img2_filename,
-                                                             'tmp_interponet/out_no_var.flo', out_flo_path, 'sintel')
+                        if args.variational_refinement:
+                            utils.calc_variational_inference_map(img1_filename, img2_filename,
+                                                                 'tmp_interponet/out_no_var.flo', out_flo_path, 'sintel')
 
-                        # Read outputted flow to compute metrics
-                        pred_flow = io_utils.read_flow(out_flo_path)
+                            # Read outputted flow to compute metrics
+                            pred_flow = io_utils.read_flow(out_flo_path)
+                        else:
+                            pred_flow = io_utils.read_flow('tmp_interponet/out_no_var.flo')
 
                         if args.compute_metrics and args.gt_flow is not None:
                             print("Compute metrics is True and gt_flow is not None")
@@ -527,8 +534,9 @@ if __name__ == '__main__':
     parser.add_argument('--new_par_folder', type=str, required=False,
                         help='for batch inference, instead of creating a subfolder with the first file parent name,'
                              ' we assign a custom', default=None)
-    parser.add_argument('--save_image', type=bool, required=False, help='whether to save an colour-coded image of the'
-                                                                        ' predicted flow or not', default=True,)
+    parser.add_argument('--save_image', type=io_utils.str2bool, required=False, help='whether to save an colour-coded'
+                                                                                     ' image of the predicted flow or'
+                                                                                     ' not', default=True,)
     parser.add_argument('--gt_flow', type=str, required=False,
                         help='Path to ground truth flow so we can compute error metrics',
                         default=None,)
@@ -539,6 +547,8 @@ if __name__ == '__main__':
                         help='Path to invalid mask with pixels that should not be considered when computing metrics = '
                              '1(invalid flow)',
                         default=None,)
+    parser.add_argument('--variational_refinment', type=io_utils.str2bool, required=False,
+                        help='whether to refine net output with variational energy (EpicFlow)', default=True,)
     arguments = parser.parse_args()
 
     if arguments.sintel:
