@@ -97,7 +97,7 @@ def test_one_image(args):
                 os.makedirs(parent_folder_name)
             out_flo_path = os.path.join(parent_folder_name, unique_name + '_flow.flo')
 
-            if args.variational_refinment:
+            if args.variational_refinement:
                 print("Variational post Processing...")
                 utils.calc_variational_inference_map(args.img1_filename, args.img2_filename,
                                                      'tmp_interponet/out_no_var.flo', out_flo_path, 'sintel')
@@ -547,7 +547,7 @@ if __name__ == '__main__':
                         help='Path to invalid mask with pixels that should not be considered when computing metrics = '
                              '1(invalid flow)',
                         default=None,)
-    parser.add_argument('--variational_refinment', type=io_utils.str2bool, required=False,
+    parser.add_argument('--variational_refinement', type=io_utils.str2bool, required=False,
                         help='whether to refine net output with variational energy (EpicFlow)', default=True,)
     # Default interpolation order is bilinear according to the paper (although original code use bicubic)
     # value: 0 ==> NN, 1 ==> bi-linear, 2 ==> bi-quadratic, 3 ==> bi-cubic, 4 ==> bi-quartic, 5 ==> bi-quintic
