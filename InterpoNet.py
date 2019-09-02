@@ -76,7 +76,7 @@ def test_one_image(args):
             # due to mismatch library versions
             # upscaled_pred = prediction[0]
             upscaled_pred = sk.transform.resize(prediction[0], [args.img_height, args.img_width, 2],
-                                                preserve_range=True, order=3)
+                                                preserve_range=True, order=args.interp_order)
             # upscaled_pred = cv2.resize(prediction[0], (args.img_width, args.img_height),  # keeps n_ch cte
             #                            interpolation=cv2.INTER_CUBIC)  # should preserve dtype
             # # Careful, opencv swaps width and height, must swap them again
@@ -366,7 +366,7 @@ def test_batch(args):
                         # skimage transform.resize is simpler to call and ensures to preserve the range but does
                         # not work on cluster due to mismatch library versions
                         upscaled_pred = sk.transform.resize(prediction[0], [args.img_height, args.img_width, 2],
-                                                            preserve_range=True, order=3)
+                                                            preserve_range=True, order=args.interp_order)
                         # upscaled_pred = cv2.resize(prediction[0], (args.img_width, args.img_height),  # keeps n_ch cte
                         #                            interpolation=cv2.INTER_CUBIC)  # should preserve dtype
                         # # Careful, opencv swaps width and height, must swap them again
@@ -549,6 +549,9 @@ if __name__ == '__main__':
                         default=None,)
     parser.add_argument('--variational_refinment', type=io_utils.str2bool, required=False,
                         help='whether to refine net output with variational energy (EpicFlow)', default=True,)
+    # Default interpolation order is bilinear according to the paper (although original code use bicubic)
+    # value: 0 ==> NN, 1 ==> bi-linear, 2 ==> bi-quadratic, 3 ==> bi-cubic, 4 ==> bi-quartic, 5 ==> bi-quintic
+    parser.add_argument('--interp_order', type=int, required=False, help='Saved model parameters filename', default=1)
     arguments = parser.parse_args()
 
     if arguments.sintel:
